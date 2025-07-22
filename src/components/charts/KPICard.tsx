@@ -6,6 +6,7 @@ interface KPICardProps {
   value: number;
   unit?: string;
   description: string;
+  formula?: string;
   trend?: 'up' | 'down' | 'neutral';
   trendValue?: number;
   color?: 'blue' | 'green' | 'orange' | 'red' | 'purple';
@@ -24,6 +25,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   value,
   unit = '',
   description,
+  formula,
   trend = 'neutral',
   trendValue,
   color = 'blue'
@@ -71,6 +73,14 @@ export const KPICard: React.FC<KPICardProps> = ({
         </div>
         <div className={`w-4 h-16 rounded-full ${colorClasses[color]}`}></div>
       </div>
+      
+      {formula && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <p className="text-xs text-gray-500 font-mono leading-relaxed">
+            <span className="font-semibold text-gray-600">Formula:</span> {formula}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

@@ -69,6 +69,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.installCallsPercentage,
       unit: '%',
       description: '% of Install Calls ($5k+) / Drain Cleaning Calls',
+      formula: '(# of Install Calls ≥ $5k) ÷ (# of Drain Cleaning Calls) × 100',
       color: 'blue' as const,
       trend: 'up' as const,
       trendValue: 5.2
@@ -78,6 +79,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.installRevenuePerCall,
       unit: '$',
       description: 'Install Revenue / # of Drain Cleaning Calls',
+      formula: '(Total Install Revenue) ÷ (# of Drain Cleaning Calls)',
       color: 'green' as const,
       trend: 'up' as const,
       trendValue: 12.8
@@ -87,6 +89,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.jettingJobsPercentage,
       unit: '%',
       description: '% of Jetting Jobs / # of Drain Cleaning Calls',
+      formula: '(# of Jetting Jobs) ÷ (# of Drain Cleaning Calls) × 100',
       color: 'orange' as const,
       trend: 'down' as const,
       trendValue: -2.1
@@ -96,6 +99,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.jettingRevenuePerCall,
       unit: '$',
       description: 'Jetting Revenue / # of Drain Cleaning Calls',
+      formula: '(Total Jetting Revenue) ÷ (# of Drain Cleaning Calls)',
       color: 'purple' as const,
       trend: 'up' as const,
       trendValue: 8.5
@@ -105,6 +109,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.descalingJobsPercentage,
       unit: '%',
       description: '% of Descaling Jobs / # of Drain Cleaning Calls',
+      formula: '(# of Descaling Jobs) ÷ (# of Drain Cleaning Calls) × 100',
       color: 'blue' as const,
       trend: 'neutral' as const
     },
@@ -113,6 +118,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.descalingRevenuePerCall,
       unit: '$',
       description: 'Descaling Revenue / # of Drain Cleaning Calls',
+      formula: '(Total Descaling Revenue) ÷ (# of Drain Cleaning Calls)',
       color: 'green' as const,
       trend: 'up' as const,
       trendValue: 15.3
@@ -122,6 +128,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.membershipConversionRate,
       unit: '%',
       description: 'Percentage of customers who sign up for memberships',
+      formula: '(# of New Memberships) ÷ (# of Total Customers) × 100',
       color: 'orange' as const,
       trend: 'up' as const,
       trendValue: 7.2
@@ -131,6 +138,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.totalMembershipsRenewed,
       unit: '',
       description: 'Total number of memberships renewed this period',
+      formula: 'COUNT(Renewed Memberships)',
       color: 'purple' as const,
       trend: 'up' as const,
       trendValue: 18.7
@@ -140,6 +148,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.techPayPercentage,
       unit: '%',
       description: 'Tech Pay / Total Tech Call Revenue',
+      formula: '(Total Tech Pay) ÷ (Total Tech Call Revenue) × 100',
       color: 'red' as const,
       trend: 'down' as const,
       trendValue: -1.8
@@ -149,6 +158,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.laborRevenuePerHour,
       unit: '$',
       description: 'Labor Revenue / Worked Hours',
+      formula: '(Total Labor Revenue) ÷ (Total Worked Hours)',
       color: 'blue' as const,
       trend: 'up' as const,
       trendValue: 9.4
@@ -158,6 +168,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.jobEfficiency,
       unit: '%',
       description: 'Allotted Hours for Repair / Actual Repair Time',
+      formula: '(Allotted Hours for Repair) ÷ (Actual Repair Time) × 100',
       color: 'green' as const,
       trend: 'up' as const,
       trendValue: 3.6
@@ -167,6 +178,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.zeroRevenueCallPercentage,
       unit: '%',
       description: 'Percentage of calls that generated no revenue',
+      formula: '(# of $0 Revenue Calls) ÷ (Total # of Calls) × 100',
       color: 'red' as const,
       trend: 'down' as const,
       trendValue: -12.5
@@ -176,6 +188,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.diagnosticFeeOnlyPercentage,
       unit: '%',
       description: 'Percentage of calls that only charged diagnostic fee',
+      formula: '(# of Diagnostic Fee Only Calls) ÷ (Total # of Calls) × 100',
       color: 'orange' as const,
       trend: 'down' as const,
       trendValue: -5.8
@@ -185,6 +198,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.callbackPercentage,
       unit: '%',
       description: 'Percentage of jobs that required a callback',
+      formula: '(# of Callback Jobs) ÷ (Total # of Jobs) × 100',
       color: 'red' as const,
       trend: 'down' as const,
       trendValue: -8.2
@@ -194,6 +208,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.clientComplaintPercentage,
       unit: '%',
       description: 'Percentage of jobs that resulted in complaints',
+      formula: '(# of Jobs with Complaints) ÷ (Total # of Jobs) × 100',
       color: 'red' as const,
       trend: 'down' as const,
       trendValue: -15.3
@@ -203,6 +218,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.clientReviewPercentage,
       unit: '%',
       description: 'Percentage of customers who left reviews',
+      formula: '(# of Customer Reviews) ÷ (Total # of Customers) × 100',
       color: 'green' as const,
       trend: 'up' as const,
       trendValue: 22.1
@@ -227,6 +243,7 @@ export const Dashboard: React.FC = () => {
             value={card.value}
             unit={card.unit}
             description={card.description}
+            formula={card.formula}
             color={card.color}
             trend={card.trend}
             trendValue={card.trendValue}
