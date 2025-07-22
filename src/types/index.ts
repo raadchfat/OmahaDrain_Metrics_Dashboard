@@ -25,9 +25,18 @@ export interface TimeSeriesData {
 
 export interface GoogleSheetConfig {
   sheetId: string;
+  name: string;
   apiKey: string;
   range: string;
   refreshInterval: number;
+  isActive: boolean;
+  dataType: 'kpi' | 'timeseries' | 'raw';
+  lastSync?: Date;
+}
+
+export interface MultiSheetConfig {
+  sheets: GoogleSheetConfig[];
+  globalApiKey: string;
 }
 
 export interface User {

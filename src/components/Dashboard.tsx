@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { KPICard } from './charts/KPICard';
 import { TrendChart } from './charts/TrendChart';
 import { TimeFrameFilter } from './filters/TimeFrameFilter';
-import { GoogleSheetsService } from '../services/googleSheets';
-import { KPIData, TimeFrame, TimeSeriesData } from '../types';
+import { MultiSheetService } from '../services/googleSheets';
+import { KPIData, TimeFrame, TimeSeriesData, MultiSheetConfig } from '../types';
 
 export const Dashboard: React.FC = () => {
   const [kpiData, setKpiData] = useState<KPIData | null>(null);
@@ -18,12 +18,33 @@ export const Dashboard: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // In production, these would come from settings/environment
-      const googleSheets = new GoogleSheetsService('demo-key', 'demo-sheet-id');
+      // Load configuration from localStorage
+      const savedConfig = localStorage.getItem('multiSheetConfig');
+      let config: MultiSheetConfig;
+      
+      if (savedConfig) {
+        config = JSON.parse(savedConfig);
+      } else {
+        // Fallback to demo configuration
+        config = {
+          globalApiKey: 'demo-key',
+          sheets: [{
+            sheetId: 'demo-sheet-id',
+            name: 'Demo Sheet',
+            apiKey: '',
+            range: 'A1:Z1000',
+            refreshInterval: 300,
+            isActive: true,
+            dataType: 'kpi'
+          }]
+        };
+      }
+      
+      const multiSheetService = new MultiSheetService(config);
       
       const [kpis, trends] = await Promise.all([
-        googleSheets.getKPIData(),
-        googleSheets.getTimeSeriesData()
+        multiSheetService.getAggregatedKPIData(),
+        multiSheetService.getAggregatedTimeSeriesData()
       ]);
       
       setKpiData(kpis);
@@ -216,12 +237,12 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TrendChart
           data={trendData}
-          title="Install Calls Trend"
+          title="Multi-Source Install Calls Trend"
           color="#3B82F6"
         />
         <TrendChart
           data={trendData.map(d => ({ ...d, value: d.value * 0.7 + 15 }))}
-          title="Revenue Efficiency Trend"
+          title="Aggregated Revenue Efficiency"
           color="#10B981"
         />
       </div>
