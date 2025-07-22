@@ -52,3 +52,4 @@ export interface DateRange {
 }
 
 export type TimeFrame = 'week' | 'month' | 'quarter' | 'year' | 'custom';
+export type TimeFrame = 'today' | 'yesterday' | 'week' | 'month' | 'quarter' | 'year' | 'custom';

@@ -8,7 +8,7 @@ import { KPIData, TimeFrame, TimeSeriesData, MultiSheetConfig } from '../types';
 export const Dashboard: React.FC = () => {
   const [kpiData, setKpiData] = useState<KPIData | null>(null);
   const [trendData, setTrendData] = useState<TimeSeriesData[]>([]);
-  const [timeFrame, setTimeFrame] = useState<TimeFrame>('month');
+  const [timeFrame, setTimeFrame] = useState<TimeFrame>('today');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

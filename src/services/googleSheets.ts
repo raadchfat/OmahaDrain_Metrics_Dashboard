@@ -207,13 +207,13 @@ export class GoogleSheetsService {
     const data = [];
     const today = new Date();
     
-    for (let i = 29; i >= 0; i--) {
+    for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       
       data.push({
         date: date.toISOString().split('T')[0],
-        value: Math.random() * 100,
+        value: 15 + Math.random() * 10, // More realistic install call percentages
         metric: 'installCallsPercentage'
       });
     }
