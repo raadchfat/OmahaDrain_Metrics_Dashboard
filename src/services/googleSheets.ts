@@ -110,27 +110,32 @@ export class MultiSheetService {
   private processKPIData(data: any[][], sheetName: string): KPIData {
     const rows = data.slice(1); // Skip header row
     const totalCalls = rows.length;
-    const installCalls = rows.filter(row => parseFloat(row[2] || '0') >= 10000).length;
+    
+    // Column Y is index 24 (Y = 25th column, 0-indexed = 24)
+    const revenueColumnIndex = 24; // Column Y
+    
+    // Filter jobs with revenue >= $10k from column Y
+    const installCalls = rows.filter(row => parseFloat(row[revenueColumnIndex] || '0') >= 10000).length;
     const drainCleaningCalls = rows.filter(row => row[1] === 'Drain Cleaning').length;
     const jettingJobs = rows.filter(row => row[1] === 'Jetting').length;
     const descalingJobs = rows.filter(row => row[1] === 'Descaling').length;
     const callbackCalls = rows.filter(row => row[6] === 'Yes').length;
     const complaintCalls = rows.filter(row => row[7] === 'Yes').length;
     
-    // Calculate install revenue as sum of all jobs >= $10k
+    // Calculate install revenue as sum of all jobs >= $10k from column Y
     const installRevenue = rows
-      .filter(row => parseFloat(row[2] || '0') >= 10000)
-      .reduce((sum, row) => sum + parseFloat(row[2] || '0'), 0);
+      .filter(row => parseFloat(row[revenueColumnIndex] || '0') >= 10000)
+      .reduce((sum, row) => sum + parseFloat(row[revenueColumnIndex] || '0'), 0);
     
     return {
       installCallsPercentage: drainCleaningCalls > 0 ? (installCalls / drainCleaningCalls) * 100 : 0,
-      installRevenuePerCall: drainCleaningCalls > 0 ? installRevenue / drainCleaningCalls : 0,
+      installRevenuePerCall: totalCalls > 0 ? installRevenue / totalCalls : 0, // Total install revenue / total rows
       jettingJobsPercentage: drainCleaningCalls > 0 ? (jettingJobs / drainCleaningCalls) * 100 : 0,
       jettingRevenuePerCall: drainCleaningCalls > 0 ? 
-        rows.filter(row => row[1] === 'Jetting').reduce((sum, row) => sum + parseFloat(row[2] || '0'), 0) / drainCleaningCalls : 0,
+        rows.filter(row => row[1] === 'Jetting').reduce((sum, row) => sum + parseFloat(row[revenueColumnIndex] || '0'), 0) / drainCleaningCalls : 0,
       descalingJobsPercentage: drainCleaningCalls > 0 ? (descalingJobs / drainCleaningCalls) * 100 : 0,
       descalingRevenuePerCall: drainCleaningCalls > 0 ? 
-        rows.filter(row => row[1] === 'Descaling').reduce((sum, row) => sum + parseFloat(row[2] || '0'), 0) / drainCleaningCalls : 0,
+        rows.filter(row => row[1] === 'Descaling').reduce((sum, row) => sum + parseFloat(row[revenueColumnIndex] || '0'), 0) / drainCleaningCalls : 0,
       membershipConversionRate: 15.8 + Math.random() * 5, // Mock with variation
       totalMembershipsRenewed: Math.floor(40 + Math.random() * 20),
       techPayPercentage: 18.5 + Math.random() * 3,

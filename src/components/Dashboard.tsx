@@ -114,8 +114,8 @@ export const Dashboard: React.FC = () => {
       title: 'Install Revenue per Call',
       value: kpiData.installRevenuePerCall,
       unit: '$',
-      description: 'Install Revenue ($10k+ jobs) / # of Drain Cleaning Calls',
-      formula: '(Sum of all jobs ≥ $10k) ÷ (# of Drain Cleaning Calls)',
+      description: 'Total Install Revenue ($10k+ jobs from Column Y) / Total Number of Rows',
+      formula: '(Sum of Column Y where value ≥ $10k) ÷ (Total Number of Rows)',
       color: 'green' as const,
       trend: 'up' as const,
       trendValue: 12.8
