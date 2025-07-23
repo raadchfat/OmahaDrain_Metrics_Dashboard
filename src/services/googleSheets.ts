@@ -118,10 +118,6 @@ API Error: ${errorMessage}`);
       sheet.isActive && sheet.dataType === 'kpi'
     );
 
-    if (kpiSheets.length === 0) {
-      // Fallback to demo data if no sheets configured
-      return this.getDemoKPIData(dateRange);
-    }
 
     const allKPIData: KPIData[] = [];
     let soldLineItemsSheetData: any[][] = [];
@@ -129,10 +125,18 @@ API Error: ${errorMessage}`);
 
     for (const sheet of kpiSheets) {
       try {
-        const data = this.getCachedSheetData(sheet.sheetId);
+        let data = this.getCachedSheetData(sheet.sheetId);
+        
+        // If no cached data, try to fetch it
         if (!data) {
-          console.warn(`No cached data found for sheet ${sheet.name}, skipping`);
-          continue;
+          console.warn(`No cached data found for sheet ${sheet.name}, attempting to fetch...`);
+          try {
+            data = await this.fetchSheetData(sheet);
+            this.sheetDataCache.set(sheet.sheetId, data);
+          } catch (fetchError) {
+            console.warn(`Failed to fetch data for sheet ${sheet.name}:`, fetchError);
+            continue;
+          }
         }
         
         const kpiData = this.processKPIData(data, sheet.name, dateRange);
@@ -151,10 +155,21 @@ API Error: ${errorMessage}`);
     
     if (soldLineItemsSheet) {
       try {
-        const soldLineItemsData = this.getCachedSheetData(soldLineItemsSheet.sheetId);
+        let soldLineItemsData = this.getCachedSheetData(soldLineItemsSheet.sheetId);
+        
+        // If no cached data, try to fetch it
         if (!soldLineItemsData) {
-          console.warn('No cached data found for Sold Line Items sheet');
-        } else {
+          console.warn('No cached data found for Sold Line Items sheet, attempting to fetch...');
+          try {
+            soldLineItemsData = await this.fetchSheetData(soldLineItemsSheet);
+            this.sheetDataCache.set(soldLineItemsSheet.sheetId, soldLineItemsData);
+          } catch (fetchError) {
+            console.warn('Failed to fetch Sold Line Items sheet:', fetchError);
+            soldLineItemsData = null;
+          }
+        }
+        
+        if (soldLineItemsData) {
         // Filter by date range if provided - try different date column positions
         if (dateRange) {
           const dataRows = soldLineItemsData.slice(1);
@@ -180,14 +195,14 @@ API Error: ${errorMessage}`);
       }
     }
 
-    if (allKPIData.length === 0) {
+    if (allKPIData.length === 0 && soldLineItemsSheetData.length === 0) {
       // Fallback to demo data if all sheets fail
       console.warn('No KPI data could be retrieved from any sheet, using demo data');
       return this.getDemoKPIData(dateRange);
     }
 
     // Aggregate data from multiple sheets with special handling for install calls rate
-    const aggregatedData = this.aggregateKPIData(allKPIData);
+    const aggregatedData = allKPIData.length > 0 ? this.aggregateKPIData(allKPIData) : this.getDemoKPIData(dateRange);
     
     // Calculate Install Calls Rate using the guide methodology
     if (soldLineItemsSheetData.length > 0) {
@@ -521,11 +536,20 @@ API Error: ${errorMessage}`);
 
     for (const sheet of timeSeriesSheets) {
       try {
-        const data = this.getCachedSheetData(sheet.sheetId);
+        let data = this.getCachedSheetData(sheet.sheetId);
+        
+        // If no cached data, try to fetch it
         if (!data) {
-          console.warn(`No cached data found for sheet ${sheet.name}, skipping`);
-          continue;
+          console.warn(`No cached data found for sheet ${sheet.name}, attempting to fetch...`);
+          try {
+            data = await this.fetchSheetData(sheet);
+            this.sheetDataCache.set(sheet.sheetId, data);
+          } catch (fetchError) {
+            console.warn(`Failed to fetch data for sheet ${sheet.name}:`, fetchError);
+            continue;
+          }
         }
+        
         const timeSeriesData = this.processTimeSeriesData(data, sheet.name, dateRange);
         allTimeSeriesData.push(...timeSeriesData);
       } catch (error) {

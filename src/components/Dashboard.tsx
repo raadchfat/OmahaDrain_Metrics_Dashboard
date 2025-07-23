@@ -125,8 +125,13 @@ export const Dashboard: React.FC = () => {
         try {
           const multiSheetService = new MultiSheetService(config);
           
-          // Fetch all active sheets once to populate cache
-          await multiSheetService.fetchAllActiveSheets();
+          // Try to fetch all active sheets once to populate cache, but continue even if it fails
+          try {
+            await multiSheetService.fetchAllActiveSheets();
+            console.log('Successfully pre-cached all active sheets');
+          } catch (cacheError) {
+            console.warn('Failed to pre-cache sheets, will fetch individually as needed:', cacheError);
+          }
           
           const dateRange = getDateRangeFromTimeFrame(timeFrame);
           const [kpis, trends] = await Promise.all([
