@@ -85,6 +85,7 @@ export class MultiSheetService {
     const allKPIData: KPIData[] = [];
     let jobsRevenueSheetData: KPIData | null = null;
     let jobsRevenueSheetRowCount = 0;
+    let soldLineItemsSheetData: any[][] = [];
 
     for (const sheet of kpiSheets) {
       try {
@@ -95,6 +96,11 @@ export class MultiSheetService {
         if (sheet.sheetId === '1p_CdgHRpR44Rl9KdUuXPTWmqAoPss251gXtS_ZjyoYQ') {
           jobsRevenueSheetData = kpiData;
           jobsRevenueSheetRowCount = data.length - 1; // Subtract header row
+        }
+        
+        // Store Sold Line Items sheet data separately for jetting jobs calculation
+        if (sheet.sheetId === '1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0') {
+          soldLineItemsSheetData = data.slice(1); // Skip header row
         }
         
         allKPIData.push(kpiData);
@@ -141,6 +147,22 @@ export class MultiSheetService {
       
       // Calculate install revenue per call using Jobs Revenue sheet row count as denominator
       aggregatedData.installRevenuePerCall = totalInstallRevenue / jobsRevenueSheetRowCount;
+      
+      // Calculate jetting jobs rate using Sold Line Items sheet and Jobs Revenue sheet row count
+      if (soldLineItemsSheetData.length > 0) {
+        const jettingJobs = soldLineItemsSheetData.filter(row => {
+          const description = this.getString(row, 1).toLowerCase();
+          return description.includes('jetting') || description.includes('jet');
+        }).length;
+        
+        aggregatedData.jettingJobsPercentage = (jettingJobs / jobsRevenueSheetRowCount) * 100;
+        
+        console.log('Jetting Jobs Calculation:', {
+          jettingJobsFromSoldLineItems: jettingJobs,
+          jobsRevenueSheetRowCount,
+          jettingJobsPercentage: aggregatedData.jettingJobsPercentage
+        });
+      }
       
       console.log('Install Metrics Calculation:', {
         totalInstallCalls,
@@ -212,44 +234,27 @@ export class MultiSheetService {
     // Column Y is index 24 (Y = 25th column, 0-indexed = 24)
     const revenueColumnIndex = 24; // Column Y
     
-    // Helper function to safely parse numbers
-    const parseNumber = (value: any): number => {
-      if (typeof value === 'number') return value;
-      if (typeof value === 'string') {
-        // Remove currency symbols, commas, and other formatting
-        const cleaned = value.replace(/[$,\s]/g, '');
-        const parsed = parseFloat(cleaned);
-        return isNaN(parsed) ? 0 : parsed;
-      }
-      return 0;
-    };
-
-    // Helper function to safely get string values
-    const getString = (row: any[], index: number): string => {
-      return (row[index] || '').toString().trim();
-    };
-
     // Calculate metrics based on actual data
     const installCalls = rows.filter(row => {
-      const revenue = parseNumber(row[revenueColumnIndex]);
+      const revenue = this.parseNumber(row[revenueColumnIndex]);
       return revenue >= 10000;
     }).length;
 
 
     const jettingJobs = rows.filter(row => 
-      getString(row, 1).toLowerCase().includes('jetting') ||
-      getString(row, 1).toLowerCase().includes('jet')
+      this.getString(row, 1).toLowerCase().includes('jetting') ||
+      this.getString(row, 1).toLowerCase().includes('jet')
     ).length;
 
     const descalingJobs = rows.filter(row => 
-      getString(row, 1).toLowerCase().includes('descaling') ||
-      getString(row, 1).toLowerCase().includes('descale')
+      this.getString(row, 1).toLowerCase().includes('descaling') ||
+      this.getString(row, 1).toLowerCase().includes('descale')
     ).length;
 
     // Look for callback indicators in multiple possible columns
     const callbackCalls = rows.filter(row => {
       for (let i = 6; i < Math.min(row.length, 15); i++) {
-        const value = getString(row, i).toLowerCase();
+        const value = this.getString(row, i).toLowerCase();
         if (value.includes('yes') || value.includes('callback') || value.includes('return')) {
           return true;
         }
@@ -260,7 +265,7 @@ export class MultiSheetService {
     // Look for complaint indicators
     const complaintCalls = rows.filter(row => {
       for (let i = 7; i < Math.min(row.length, 15); i++) {
-        const value = getString(row, i).toLowerCase();
+        const value = this.getString(row, i).toLowerCase();
         if (value.includes('yes') || value.includes('complaint') || value.includes('issue')) {
           return true;
         }
@@ -270,23 +275,23 @@ export class MultiSheetService {
     
     // Calculate install revenue as sum of all jobs >= $10k from column Y
     const installRevenue = rows
-      .filter(row => parseNumber(row[revenueColumnIndex]) >= 10000)
-      .reduce((sum, row) => sum + parseNumber(row[revenueColumnIndex]), 0);
+      .filter(row => this.parseNumber(row[revenueColumnIndex]) >= 10000)
+      .reduce((sum, row) => sum + this.parseNumber(row[revenueColumnIndex]), 0);
 
     // Calculate jetting revenue
     const jettingRevenue = rows
-      .filter(row => getString(row, 1).toLowerCase().includes('jetting') || getString(row, 1).toLowerCase().includes('jet'))
-      .reduce((sum, row) => sum + parseNumber(row[revenueColumnIndex]), 0);
+      .filter(row => this.getString(row, 1).toLowerCase().includes('jetting') || this.getString(row, 1).toLowerCase().includes('jet'))
+      .reduce((sum, row) => sum + this.parseNumber(row[revenueColumnIndex]), 0);
 
     // Calculate descaling revenue
     const descalingRevenue = rows
-      .filter(row => getString(row, 1).toLowerCase().includes('descaling') || getString(row, 1).toLowerCase().includes('descale'))
-      .reduce((sum, row) => sum + parseNumber(row[revenueColumnIndex]), 0);
+      .filter(row => this.getString(row, 1).toLowerCase().includes('descaling') || this.getString(row, 1).toLowerCase().includes('descale'))
+      .reduce((sum, row) => sum + this.parseNumber(row[revenueColumnIndex]), 0);
 
     // Calculate total revenue and other metrics
-    const totalRevenue = rows.reduce((sum, row) => sum + parseNumber(row[revenueColumnIndex]), 0);
-    const totalHours = rows.reduce((sum, row) => sum + parseNumber(row[3] || row[4] || 0), 0); // Duration column
-    const totalTechPay = rows.reduce((sum, row) => sum + parseNumber(row[4] || row[5] || 0), 0); // Tech pay column
+    const totalRevenue = rows.reduce((sum, row) => sum + this.parseNumber(row[revenueColumnIndex]), 0);
+    const totalHours = rows.reduce((sum, row) => sum + this.parseNumber(row[3] || row[4] || 0), 0); // Duration column
+    const totalTechPay = rows.reduce((sum, row) => sum + this.parseNumber(row[4] || row[5] || 0), 0); // Tech pay column
 
     console.log(`Sheet ${sheetName} processed:`, {
       totalRows: totalCalls,
@@ -307,7 +312,7 @@ export class MultiSheetService {
       techPayPercentage: totalRevenue > 0 ? (totalTechPay / totalRevenue) * 100 : 0,
       laborRevenuePerHour: totalHours > 0 ? totalRevenue / totalHours : 0,
       jobEfficiency: this.calculateJobEfficiency(rows),
-      zeroRevenueCallPercentage: totalCalls > 0 ? (rows.filter(row => parseNumber(row[revenueColumnIndex]) === 0).length / totalCalls) * 100 : 0,
+      zeroRevenueCallPercentage: totalCalls > 0 ? (rows.filter(row => this.parseNumber(row[revenueColumnIndex]) === 0).length / totalCalls) * 100 : 0,
       diagnosticFeeOnlyPercentage: this.calculateDiagnosticFeeOnly(rows, totalCalls),
       callbackPercentage: totalCalls > 0 ? (callbackCalls / totalCalls) * 100 : 0,
       clientComplaintPercentage: totalCalls > 0 ? (complaintCalls / totalCalls) * 100 : 0,
@@ -435,6 +440,10 @@ export class MultiSheetService {
       return isNaN(parsed) ? 0 : parsed;
     }
     return 0;
+  }
+
+  private getString(row: any[], index: number): string {
+    return (row[index] || '').toString().trim();
   }
 
   private getDemoKPIData(): KPIData {
