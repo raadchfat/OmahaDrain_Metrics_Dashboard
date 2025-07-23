@@ -80,13 +80,13 @@ export const Dashboard: React.FC = () => {
 
       if (successCount === activeSheets.length) {
         setConnectionStatus('success');
-        setConnectionMessage(`Successfully connected to all ${successCount} active sheet(s)! Ready to calculate KPIs from your Google Sheets data.`);
+        setConnectionMessage(`Successfully connected to all ${successCount} active sheet(s)! Your KPIs are now calculated from real Google Sheets data.`);
       } else if (successCount > 0) {
         setConnectionStatus('error');
-        setConnectionMessage(`Connected to ${successCount}/${activeSheets.length} sheets. Issues found: ${errorMessages.slice(0, 2).join('; ')}${errorMessages.length > 2 ? '...' : ''}`);
+        setConnectionMessage(`Partial success: Connected to ${successCount}/${activeSheets.length} sheets. Issues: ${errorMessages.slice(0, 2).join('; ')}${errorMessages.length > 2 ? '...' : ''}`);
       } else {
         setConnectionStatus('error');
-        setConnectionMessage(`Failed to connect to any sheets. Issues: ${errorMessages.slice(0, 2).join('; ')}. Please verify your API key and sheet permissions.`);
+        setConnectionMessage(`All connections failed. Common fixes: 1) Enable Google Sheets API in Google Cloud Console, 2) Add '*.webcontainer-api.io/*' to API key HTTP referrers, 3) Set sheets to 'Anyone with link can view'. Issues: ${errorMessages.slice(0, 1).join('')}`);
       }
 
     } catch (error) {

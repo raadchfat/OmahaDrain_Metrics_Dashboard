@@ -47,7 +47,7 @@ export class MultiSheetService {
         }
         
         if (response.status === 403) {
-          throw new Error(`Access denied. Please check your API key configuration in Google Cloud Console. ${errorMessage}`);
+          throw new Error(`Access denied (403). Your API key may not be configured for this domain. Please check: 1) Google Sheets API is enabled, 2) API key has proper HTTP referrer restrictions set to allow '*.webcontainer-api.io/*', 3) Your sheets are set to 'Anyone with the link can view'. Error: ${errorMessage}`);
         } else if (response.status === 400) {
           throw new Error(`Invalid request. Please check your Sheet ID and range. ${errorMessage}`);
         } else {
