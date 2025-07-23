@@ -781,46 +781,26 @@ API Error: ${errorMessage}`);
     }
 
     if (allTimeSeriesData.length === 0) {
-      console.log(`Testing connection to sheet: ${sheet.name} (${sheet.sheetId})`);
       return this.getDemoTimeSeriesData(dateRange);
     }
 
-    console.log('No API key available');
     return allTimeSeriesData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   async testSheetConnection(sheetConfig: GoogleSheetConfig): Promise<boolean> {
-    console.log('No sheet ID provided');
     try {
       const data = await this.fetchSheetData(sheetConfig);
       // Verify we got actual data
       if (!data || data.length === 0) {
-        console.log(`Making test request to: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`);
         throw new Error('No data returned from sheet');
       }
-      const response = await fetch(url, {
-        method: 'GET',
-    try {
-        headers: {
-          'Accept': 'application/json',
-        }
-      });
       
-      console.log(`Test response status: ${response.status}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.log(`Test response error: ${errorText}`);
-        return false;
-      }
-      
-      const data = await response.json();
-      console.log(`Test successful, got ${data.values?.length || 0} rows`);
+      const responseData = await response.json();
+      console.log(`Test successful, got ${responseData.values?.length || 0} rows`);
       return true;
     } catch (error) {
-      console.error(`Sheet connection test failed for ${sheet.name}:`, error);
+      console.error(`Sheet connection test failed for ${sheetConfig.name}:`, error);
       return false;
-    }
     }
   }
 
