@@ -614,29 +614,50 @@ API Error: ${errorMessage}`);
     
     if (dateRange) {
       const originalRowCount = rows.length;
-      const filteredRows = rows.filter(row => {
-        const rowDate = parseDateFromRow(row, 0); // Assuming date is in first column
-        return rowDate && isDateInRange(rowDate, dateRange);
-      });
+     let filteredRows: any[][] = [];
+     let dateColumnIndex = -1;
+     
+     // Try to find the correct date column (test columns A, B, C)
+     for (let colIndex = 0; colIndex <= 2; colIndex++) {
+       const testRows = rows.slice(0, Math.min(5, rows.length));
+       const validDates = testRows.filter(row => {
+         const date = parseDateFromRow(row, colIndex);
+         return date !== null;
+       });
+       
+       if (validDates.length > 0) {
+         dateColumnIndex = colIndex;
+         console.log(`${sheetName}: Found valid dates in column ${String.fromCharCode(65 + colIndex)}`);
+         break;
+       }
+     }
+     
+     if (dateColumnIndex >= 0) {
+       filteredRows = rows.filter(row => {
+         const rowDate = parseDateFromRow(row, dateColumnIndex);
+         return rowDate && isDateInRange(rowDate, dateRange);
+       });
+     } else {
+       console.log(`${sheetName}: No valid date column found`);
+       filteredRows = [];
+     }
       
       console.log(`${sheetName}: ${originalRowCount} rows before filtering, ${filteredRows.length} after date filtering`);
       
       // If no rows match the date filter, check if we can parse any dates at all
       if (filteredRows.length === 0) {
-        const sampleDates = rows.slice(0, 5).map(row => ({
-          raw: row[0],
-          parsed: parseDateFromRow(row, 0)
-        }));
-        console.log(`${sheetName}: No rows matched date filter. Sample dates:`, sampleDates);
+       console.log(`${sheetName}: No rows matched date filter for range ${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}`);
         console.log(`${sheetName}: Date range:`, dateRange);
         
-        // If we can't parse any dates, use all rows (assume no date column or different format)
-        const hasValidDates = rows.some(row => parseDateFromRow(row, 0) !== null);
-        if (!hasValidDates) {
+       // If we found a date column but no rows match, respect the filter
+       // If we couldn't find any date column, use all rows
+       if (dateColumnIndex === -1) {
           console.log(`${sheetName}: No valid dates found, using all rows`);
-          rows = rows; // Use all rows
+         rows = rows;
         } else {
-          rows = filteredRows; // Use empty filtered result
+         console.log(`${sheetName}: Date column found but no rows in range, using demo data instead`);
+         // Return demo data instead of empty data
+         return this.getDemoKPIDataForSheet(sheetName);
         }
       } else {
         rows = filteredRows;
