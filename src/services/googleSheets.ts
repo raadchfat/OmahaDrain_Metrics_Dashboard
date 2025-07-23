@@ -260,10 +260,15 @@ API Error: ${errorMessage}`);
 
   /**
    * Calculate Install Calls Rate following the guide methodology:
-   * Step 1: Get unique jobs in date range
-   * Step 2: Calculate total revenue per job
-   * Step 3: Flag install jobs (≥$10k)
-   * Step 4: Calculate percentage
+   * Uses exact column mapping:
+   * Job column: N (index 13)
+   * Invoice Date: B (index 1)
+   * Department: Q (index 16)
+   * Price: T (index 19)
+   * 
+   * Step 1: Service Calls Performed = Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning"
+   * Step 2: Install Jobs Performed = Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning" AND total job revenue ≥ $10k
+   * Step 3: Install Calls Rate = Install Jobs Performed / Service Calls Performed
    */
   private calculateInstallCallsRateFromGuide(soldLineItemsData: any[][], dateRange?: DateRange): {
     installCallsPercentage: number;
@@ -272,10 +277,32 @@ API Error: ${errorMessage}`);
     installJobsCount: number;
     totalInstallRevenue: number;
   } {
-    // Step 1: Get unique jobs in date range
-    const uniqueJobs = this.getUniqueJobsInDateRange(soldLineItemsData, dateRange);
+    console.log('calculateInstallCallsRateFromGuide called with:', {
+      totalRows: soldLineItemsData.length,
+      dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
+    });
+
+    // Step 1: Service Calls Performed (Denominator)
+    // Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning"
+    const serviceCallJobs = new Set<string>();
     
-    if (uniqueJobs.length === 0) {
+    soldLineItemsData.forEach(row => {
+      const job = this.getString(row, 13); // Column N (Job)
+      const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+      const department = this.getString(row, 16).toLowerCase(); // Column Q (Department) - corrected index
+      
+      // Check conditions: Invoice Date in range AND Department = "Drain cleaning"
+      const dateInRange = !dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange));
+      const isDrainCleaning = department === 'drain cleaning';
+      
+      if (job && job.trim() !== '' && dateInRange && isDrainCleaning) {
+        serviceCallJobs.add(job.trim());
+      }
+    });
+    
+    console.log('Service Calls Performed (unique jobs):', serviceCallJobs.size);
+    
+    if (serviceCallJobs.size === 0) {
       return {
         installCallsPercentage: 0,
         installRevenuePerCall: 0,
@@ -285,33 +312,34 @@ API Error: ${errorMessage}`);
       };
     }
     
-    // Step 2: Calculate total revenue per job
+    // Step 2: Calculate total revenue per job for service calls
     const jobRevenueMap = new Map<string, number>();
     
-    for (const job of uniqueJobs) {
-      // Sum all line items for this job
-      const totalRevenue = soldLineItemsData
-        .filter(row => {
-          const rowJob = this.getString(row, 13); // Column N (Job)
-          const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
-          const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
-          
-          // Check if job matches, date is in range (if specified), and department is Drain Cleaning
-          const jobMatches = rowJob.trim() === job.trim();
-          const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
-          const isDrainCleaning = department === 'drain cleaning';
-          
-          return jobMatches && dateInRange && isDrainCleaning;
-        })
-        .reduce((sum, row) => {
-          const price = this.parseNumber(row[19]); // Column T (Price)
-          return sum + price;
-        }, 0);
+    for (const job of serviceCallJobs) {
+      let totalRevenue = 0;
+      
+      // Sum all line items for this job that match criteria
+      soldLineItemsData.forEach(row => {
+        const rowJob = this.getString(row, 13); // Column N (Job)
+        const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+        const department = this.getString(row, 16).toLowerCase(); // Column Q (Department) - corrected index
+        const price = this.parseNumber(row[19]); // Column T (Price)
+        
+        // Check if job matches, date is in range (if specified), and department is Drain Cleaning
+        const jobMatches = rowJob.trim() === job.trim();
+        const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
+        const isDrainCleaning = department === 'drain cleaning';
+        
+        if (jobMatches && dateInRange && isDrainCleaning) {
+          totalRevenue += price;
+        }
+      });
       
       jobRevenueMap.set(job, totalRevenue);
     }
     
-    // Step 3: Flag install jobs (≥$10k)
+    // Step 3: Install Jobs Performed (Numerator)
+    // Count jobs with total revenue ≥ $10k
     let installJobsCount = 0;
     let totalInstallRevenue = 0;
     
@@ -322,15 +350,23 @@ API Error: ${errorMessage}`);
       }
     }
     
-    // Step 4: Calculate the KPI
-    const installCallsPercentage = uniqueJobs.length > 0 ? (installJobsCount / uniqueJobs.length) * 100 : 0;
-    // Install Revenue per Call = Total Install Jobs Revenue ÷ Count of Unique Job Numbers
-    const installRevenuePerCall = uniqueJobs.length > 0 ? totalInstallRevenue / uniqueJobs.length : 0;
+    // Step 4: Calculate the KPIs
+    const installCallsPercentage = serviceCallJobs.size > 0 ? (installJobsCount / serviceCallJobs.size) * 100 : 0;
+    // Install Revenue per Call = Total Install Jobs Revenue ÷ Service Calls Performed
+    const installRevenuePerCall = serviceCallJobs.size > 0 ? totalInstallRevenue / serviceCallJobs.size : 0;
+    
+    console.log('Install calculation results:', {
+      serviceCallsPerformed: serviceCallJobs.size,
+      installJobsPerformed: installJobsCount,
+      installCallsPercentage: installCallsPercentage.toFixed(2) + '%',
+      totalInstallRevenue,
+      installRevenuePerCall: installRevenuePerCall.toFixed(2)
+    });
     
     return {
       installCallsPercentage,
       installRevenuePerCall,
-      uniqueJobsCount: uniqueJobs.length,
+      uniqueJobsCount: serviceCallJobs.size,
       installJobsCount,
       totalInstallRevenue
     };
@@ -338,11 +374,15 @@ API Error: ${errorMessage}`);
 
   /**
    * Calculate Jetting Jobs Rate following the guide methodology:
-   * Jetting Jobs % = Jetting Jobs Performed ÷ number of jobs performed
+   * Uses exact column mapping:
+   * Job column: N (index 13)
+   * Invoice Date: B (index 1)
+   * Line Item: R (index 17) 
+   * Department: Q (index 16)
    * 
-   * Step 1: Get unique jobs in date range
-   * Step 2: Count unique jobs that had jetting services (Line Item column R contains "jet")
-   * Step 3: Calculate percentage and revenue metrics
+   * Step 1: Service Calls Performed = Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning"
+   * Step 2: Jetting Jobs Performed = Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning" AND Line Item contains "jet"
+   * Step 3: Jetting Jobs Rate = Jetting Jobs Performed / Service Calls Performed
    */
   private calculateJettingJobsFromGuide(soldLineItemsData: any[][], dateRange?: DateRange): {
     jettingJobsPercentage: number;
@@ -351,10 +391,32 @@ API Error: ${errorMessage}`);
     jettingJobsCount: number;
     totalJettingRevenue: number;
   } {
-    // Step 1: Get unique jobs in date range
-    const uniqueJobs = this.getUniqueJobsInDateRange(soldLineItemsData, dateRange);
+    console.log('calculateJettingJobsFromGuide called with:', {
+      totalRows: soldLineItemsData.length,
+      dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
+    });
+
+    // Step 1: Service Calls Performed (Denominator)
+    // Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning"
+    const serviceCallJobs = new Set<string>();
     
-    if (uniqueJobs.length === 0) {
+    soldLineItemsData.forEach(row => {
+      const job = this.getString(row, 13); // Column N (Job)
+      const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+      const department = this.getString(row, 16).toLowerCase(); // Column Q (Department) - corrected index
+      
+      // Check conditions: Invoice Date in range AND Department = "Drain cleaning"
+      const dateInRange = !dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange));
+      const isDrainCleaning = department === 'drain cleaning';
+      
+      if (job && job.trim() !== '' && dateInRange && isDrainCleaning) {
+        serviceCallJobs.add(job.trim());
+      }
+    });
+    
+    console.log('Service Calls Performed (unique jobs):', serviceCallJobs.size);
+    
+    if (serviceCallJobs.size === 0) {
       return {
         jettingJobsPercentage: 0,
         jettingRevenuePerCall: 0,
@@ -364,67 +426,65 @@ API Error: ${errorMessage}`);
       };
     }
     
-    // Step 2: Find unique jobs that had jetting services
-    // Check if ANY line item for each job contains "jet" in Line Item column (R)
+    // Step 2: Jetting Jobs Performed (Numerator)
+    // Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning" AND Line Item contains "jet"
     const jettingJobNumbers = new Set<string>();
-    let totalJettingRevenue = 0;
     
-    // Calculate total jetting revenue from ALL jetting line items in date range
-    totalJettingRevenue = soldLineItemsData
-      .filter(row => {
-        const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
-        const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
-        const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
-        
-        // Check if date is in range (if specified), line item contains "jet", and department is Drain Cleaning
-        const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
-        const isJettingItem = lineItem.includes('jet');
-        const isDrainCleaning = department === 'drain cleaning';
-        
-        return dateInRange && isJettingItem && isDrainCleaning;
-      })
-      .reduce((sum, row) => {
-        const price = this.parseNumber(row[19]); // Column T (Price)
-        return sum + price;
-      }, 0);
-    
-    for (const job of uniqueJobs) {
-      // Check all line items for this job to see if any contain "jet"
-      const jobLineItems = soldLineItemsData.filter(row => {
-        const rowJob = this.getString(row, 13); // Column N (Job)
-        const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
-        const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
-        
-        // Check if job matches, date is in range (if specified), and department is Drain Cleaning
-        const jobMatches = rowJob.trim() === job.trim();
-        const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
-        const isDrainCleaning = department === 'drain cleaning';
-        
-        return jobMatches && dateInRange && isDrainCleaning;
-      });
+    soldLineItemsData.forEach(row => {
+      const job = this.getString(row, 13); // Column N (Job)
+      const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+      const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+      const department = this.getString(row, 16).toLowerCase(); // Column Q (Department) - corrected index
       
-      // Check if any line item for this job contains "jet" in Line Item column (R)
-      const hasJettingService = jobLineItems.some(row => {
-        const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
-        return lineItem.includes('jet');
-      });
+      // Check conditions: Invoice Date in range AND Department = "Drain cleaning" AND Line Item contains "jet"
+      const dateInRange = !dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange));
+      const isDrainCleaning = department === 'drain cleaning';
+      const isJettingItem = lineItem.includes('jet');
       
-      if (hasJettingService) {
+      if (job && job.trim() !== '' && dateInRange && isDrainCleaning && isJettingItem) {
         jettingJobNumbers.add(job.trim());
       }
-    }
+    });
+    
+    console.log('Jetting Jobs Performed (unique jobs):', jettingJobNumbers.size);
+    
+    // Calculate total jetting revenue from ALL jetting line items matching criteria
+    let totalJettingRevenue = 0;
+    soldLineItemsData.forEach(row => {
+      const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+      const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+      const department = this.getString(row, 16).toLowerCase(); // Column Q (Department) - corrected index
+      const price = this.parseNumber(row[19]); // Column T (Price)
+      
+      // Check conditions: Invoice Date in range AND Department = "Drain cleaning" AND Line Item contains "jet"
+      const dateInRange = !dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange));
+      const isDrainCleaning = department === 'drain cleaning';
+      const isJettingItem = lineItem.includes('jet');
+      
+      if (dateInRange && isDrainCleaning && isJettingItem) {
+        totalJettingRevenue += price;
+      }
+    });
     
     // Step 3: Calculate the KPIs
     const jettingJobsCount = jettingJobNumbers.size;
-    const jettingJobsPercentage = uniqueJobs.length > 0 ? (jettingJobsCount / uniqueJobs.length) * 100 : 0;
+    const jettingJobsPercentage = serviceCallJobs.size > 0 ? (jettingJobsCount / serviceCallJobs.size) * 100 : 0;
     
-    // Jetting Revenue per Service Call = Total Jetting Revenue ÷ Total Jobs Performed
-    const jettingRevenuePerCall = uniqueJobs.length > 0 ? totalJettingRevenue / uniqueJobs.length : 0;
+    // Jetting Revenue per Service Call = Total Jetting Revenue ÷ Service Calls Performed
+    const jettingRevenuePerCall = serviceCallJobs.size > 0 ? totalJettingRevenue / serviceCallJobs.size : 0;
+    
+    console.log('Jetting calculation results:', {
+      serviceCallsPerformed: serviceCallJobs.size,
+      jettingJobsPerformed: jettingJobsCount,
+      jettingJobsPercentage: jettingJobsPercentage.toFixed(2) + '%',
+      totalJettingRevenue,
+      jettingRevenuePerCall: jettingRevenuePerCall.toFixed(2)
+    });
     
     return {
       jettingJobsPercentage,
       jettingRevenuePerCall,
-      uniqueJobsCount: uniqueJobs.length,
+      uniqueJobsCount: serviceCallJobs.size,
       jettingJobsCount,
       totalJettingRevenue
     };
@@ -432,11 +492,15 @@ API Error: ${errorMessage}`);
 
   /**
    * Calculate Descaling Jobs Rate following the guide methodology:
-   * Descaling Jobs Rate = Descaling Jobs Performed ÷ Service Calls Performed
+   * Uses exact column mapping:
+   * Job column: N (index 13)
+   * Invoice Date: B (index 1) 
+   * Line Item: R (index 17)
+   * Department: Q (index 16)
    * 
-   * Step 1: Get unique jobs in date range
-   * Step 2: Count unique jobs that had descaling services (Line Item column R contains "desc")
-   * Step 3: Calculate percentage and revenue metrics
+   * Step 1: Service Calls Performed = Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning"
+   * Step 2: Descaling Jobs Performed = Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning" AND Line Item contains "desc"
+   * Step 3: Descaling Jobs Rate = Descaling Jobs Performed / Service Calls Performed
    */
   private calculateDescalingJobsFromGuide(soldLineItemsData: any[][], dateRange?: DateRange): {
     descalingJobsPercentage: number;
@@ -445,10 +509,32 @@ API Error: ${errorMessage}`);
     descalingJobsCount: number;
     totalDescalingRevenue: number;
   } {
-    // Step 1: Get unique jobs in date range
-    const uniqueJobs = this.getUniqueJobsInDateRange(soldLineItemsData, dateRange);
+    console.log('calculateDescalingJobsFromGuide called with:', {
+      totalRows: soldLineItemsData.length,
+      dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
+    });
+
+    // Step 1: Service Calls Performed (Denominator)
+    // Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning"
+    const serviceCallJobs = new Set<string>();
     
-    if (uniqueJobs.length === 0) {
+    soldLineItemsData.forEach(row => {
+      const job = this.getString(row, 13); // Column N (Job)
+      const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+      const department = this.getString(row, 16).toLowerCase(); // Column Q (Department) - corrected index
+      
+      // Check conditions: Invoice Date in range AND Department = "Drain cleaning"
+      const dateInRange = !dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange));
+      const isDrainCleaning = department === 'drain cleaning';
+      
+      if (job && job.trim() !== '' && dateInRange && isDrainCleaning) {
+        serviceCallJobs.add(job.trim());
+      }
+    });
+    
+    console.log('Service Calls Performed (unique jobs):', serviceCallJobs.size);
+    
+    if (serviceCallJobs.size === 0) {
       return {
         descalingJobsPercentage: 0,
         descalingRevenuePerCall: 0,
@@ -458,67 +544,65 @@ API Error: ${errorMessage}`);
       };
     }
     
-    // Step 2: Find unique jobs that had descaling services
-    // Check if ANY line item for each job contains "desc" in Line Item column (R)
+    // Step 2: Descaling Jobs Performed (Numerator)
+    // Count unique Job numbers where Invoice Date in range AND Department = "Drain cleaning" AND Line Item contains "desc"
     const descalingJobNumbers = new Set<string>();
-    let totalDescalingRevenue = 0;
     
-    // Calculate total descaling revenue from ALL descaling line items in date range
-    totalDescalingRevenue = soldLineItemsData
-      .filter(row => {
-        const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
-        const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
-        const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
-        
-        // Check if date is in range (if specified), line item contains "desc", and department is Drain Cleaning
-        const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
-        const isDescalingItem = lineItem.includes('desc');
-        const isDrainCleaning = department === 'drain cleaning';
-        
-        return dateInRange && isDescalingItem && isDrainCleaning;
-      })
-      .reduce((sum, row) => {
-        const price = this.parseNumber(row[19]); // Column T (Price)
-        return sum + price;
-      }, 0);
-    
-    for (const job of uniqueJobs) {
-      // Check all line items for this job to see if any contain "desc"
-      const jobLineItems = soldLineItemsData.filter(row => {
-        const rowJob = this.getString(row, 13); // Column N (Job)
-        const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
-        const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
-        
-        // Check if job matches, date is in range (if specified), and department is Drain Cleaning
-        const jobMatches = rowJob.trim() === job.trim();
-        const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
-        const isDrainCleaning = department === 'drain cleaning';
-        
-        return jobMatches && dateInRange && isDrainCleaning;
-      });
+    soldLineItemsData.forEach(row => {
+      const job = this.getString(row, 13); // Column N (Job)
+      const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+      const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+      const department = this.getString(row, 16).toLowerCase(); // Column Q (Department) - corrected index
       
-      // Check if any line item for this job contains "desc" in Line Item column (R)
-      const hasDescalingService = jobLineItems.some(row => {
-        const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
-        return lineItem.includes('desc');
-      });
+      // Check conditions: Invoice Date in range AND Department = "Drain cleaning" AND Line Item contains "desc"
+      const dateInRange = !dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange));
+      const isDrainCleaning = department === 'drain cleaning';
+      const isDescalingItem = lineItem.includes('desc');
       
-      if (hasDescalingService) {
+      if (job && job.trim() !== '' && dateInRange && isDrainCleaning && isDescalingItem) {
         descalingJobNumbers.add(job.trim());
       }
-    }
+    });
+    
+    console.log('Descaling Jobs Performed (unique jobs):', descalingJobNumbers.size);
+    
+    // Calculate total descaling revenue from ALL descaling line items matching criteria
+    let totalDescalingRevenue = 0;
+    soldLineItemsData.forEach(row => {
+      const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+      const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+      const department = this.getString(row, 16).toLowerCase(); // Column Q (Department) - corrected index
+      const price = this.parseNumber(row[19]); // Column T (Price)
+      
+      // Check conditions: Invoice Date in range AND Department = "Drain cleaning" AND Line Item contains "desc"
+      const dateInRange = !dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange));
+      const isDrainCleaning = department === 'drain cleaning';
+      const isDescalingItem = lineItem.includes('desc');
+      
+      if (dateInRange && isDrainCleaning && isDescalingItem) {
+        totalDescalingRevenue += price;
+      }
+    });
     
     // Step 3: Calculate the KPIs
     const descalingJobsCount = descalingJobNumbers.size;
-    const descalingJobsPercentage = uniqueJobs.length > 0 ? (descalingJobsCount / uniqueJobs.length) * 100 : 0;
+    const descalingJobsPercentage = serviceCallJobs.size > 0 ? (descalingJobsCount / serviceCallJobs.size) * 100 : 0;
     
-    // Descaling Revenue per Service Call = Total Descaling Revenue ÷ Total Jobs Performed
-    const descalingRevenuePerCall = uniqueJobs.length > 0 ? totalDescalingRevenue / uniqueJobs.length : 0;
+    // Descaling Revenue per Service Call = Total Descaling Revenue ÷ Service Calls Performed
+    const descalingRevenuePerCall = serviceCallJobs.size > 0 ? totalDescalingRevenue / serviceCallJobs.size : 0;
+    
+    console.log('Descaling calculation results:', {
+      serviceCallsPerformed: serviceCallJobs.size,
+      descalingJobsPerformed: descalingJobsCount,
+      descalingJobsPercentage: descalingJobsPercentage.toFixed(2) + '%',
+      totalDescalingRevenue,
+      descalingRevenuePerCall: descalingRevenuePerCall.toFixed(2)
+    });
     
     return {
       descalingJobsPercentage,
       descalingRevenuePerCall,
-      uniqueJobsCount: uniqueJobs.length,
+      uniqueJobsCount: serviceCallJobs.size,
       descalingJobsCount,
       totalDescalingRevenue
     };
