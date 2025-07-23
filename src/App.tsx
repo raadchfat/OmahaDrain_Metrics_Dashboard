@@ -6,6 +6,7 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { Settings } from './components/Settings';
+import { DataInspector } from './components/DataInspector';
 import { GoogleSheetsService } from './services/googleSheets';
 
 const AppContent: React.FC = () => {
@@ -51,6 +52,8 @@ const AppContent: React.FC = () => {
         );
       case 'settings':
         return <Settings />;
+      case 'inspector':
+        return <DataInspector />;
       default:
         return <Dashboard />;
     }

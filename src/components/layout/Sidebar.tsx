@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Calendar, Settings, FileText, Users } from 'lucide-react';
+import { BarChart3, Calendar, Settings, FileText, Users, Search } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -8,6 +8,7 @@ interface SidebarProps {
 
 const navigationItems = [
   { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
+  { id: 'inspector', name: 'Data Inspector', icon: Search },
   { id: 'trends', name: 'Trends', icon: Calendar },
   { id: 'reports', name: 'Reports', icon: FileText },
   { id: 'team', name: 'Team', icon: Users },
