@@ -331,7 +331,7 @@ export const Settings: React.FC = () => {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">🚀 Getting Started with Your Google Sheets</h3>
         <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-          <li><strong>Get your API key:</strong> Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a>, create/select a project, enable Google Sheets API, and create an API key</li>
+          <li><strong>Get your API key:</strong> Go to <a href="https://console.cloud.google.com/apis/credentials" target=\"_blank" rel="noopener noreferrer\" className="underline">Google Cloud Console</a>, create/select a project, enable Google Sheets API, and create an API key</li>
           <li><strong>Configure API key:</strong> Set HTTP referrer restrictions to allow '*.netlify.app/*' and '*.webcontainer-api.io/*'</li>
           <li><strong>Prepare your sheets:</strong> Make sure your Google Sheets are set to "Anyone with the link can view"</li>
           <li><strong>Add your sheets:</strong> Click "Add Sheet" above and configure each sheet with its ID and data range</li>
