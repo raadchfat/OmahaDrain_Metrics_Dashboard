@@ -50,14 +50,16 @@ export class MultiSheetService {
         if (response.status === 403) {
           const currentDomain = window.location.hostname;
           const isWebContainer = currentDomain.includes('webcontainer-api.io');
-          const domainToAdd = isWebContainer ? '*.webcontainer-api.io/*' : `*${currentDomain}/*`;
+          const domainPatterns = isWebContainer ? 
+            ['*.webcontainer-api.io/*', '*.local-credentialless.webcontainer-api.io/*'] : 
+            [`*${currentDomain}/*`];
           
           throw new Error(`Access denied (403). Your API key's HTTP referrer restrictions are blocking this domain. To fix this:
 
 1. Go to Google Cloud Console → APIs & Services → Credentials
 2. Click on your API key
 3. Under "Application restrictions", select "HTTP referrers (web sites)"
-4. Add this pattern: ${domainToAdd}
+4. Add these patterns: ${domainPatterns.join(' and ')}
 5. Also ensure: Google Sheets API is enabled, and your sheet is set to 'Anyone with the link can view'
 
 Current blocked domain: ${window.location.origin}
