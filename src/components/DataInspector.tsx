@@ -94,33 +94,50 @@ export const DataInspector: React.FC = () => {
     updatedAnalyses[sheetIndex].error = undefined;
     setAnalyses(updatedAnalyses);
 
+    console.log(`=== ANALYZING SHEET ${sheetIndex + 1} ===`);
+    console.log('Sheet config:', config?.sheets[sheetIndex]);
     try {
       if (!config) throw new Error('No configuration found');
       
       const multiSheetService = new MultiSheetService(config);
       const sheet = config.sheets[sheetIndex];
       
-      console.log(`Analyzing sheet: ${sheet.name}`);
+      console.log(`Sheet name: ${sheet.name}`);
+      console.log(`Sheet ID: ${sheet.sheetId}`);
+      console.log(`API Key present: ${sheet.apiKey ? 'Yes (sheet-specific)' : config.globalApiKey ? 'Yes (global)' : 'No'}`);
+      console.log(`Range: ${sheet.range}`);
       
-      // Test connection first
-      const isConnected = await multiSheetService.testSheetConnection(sheet);
-      if (!isConnected) {
-        throw new Error('Cannot connect to sheet - check API key and sheet ID');
+      // Build the API URL to test
+      const apiKey = sheet.apiKey || config.globalApiKey;
+      const testUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheet.sheetId}/values/${sheet.range}?key=${apiKey}`;
+      console.log('Testing API URL:', testUrl.replace(apiKey, 'API_KEY_HIDDEN'));
+      
+      // Test with a simple fetch first
+      console.log('Making test API request...');
+      const testResponse = await fetch(testUrl);
+      console.log('API Response status:', testResponse.status);
+      console.log('API Response headers:', Object.fromEntries(testResponse.headers.entries()));
+      
+      if (!testResponse.ok) {
+        const errorText = await testResponse.text();
+        console.error('API Error response:', errorText);
+        throw new Error(`API Error ${testResponse.status}: ${errorText}`);
       }
       
-      // Fetch raw data with timeout
-      const rawData = await Promise.race([
-        multiSheetService.fetchSheetData(sheet),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout - sheet may be too large or API key invalid')), 15000)
-        )
-      ]) as any[][];
+      const testData = await testResponse.json();
+      console.log('API Response structure:', {
+        hasValues: !!testData.values,
+        rowCount: testData.values?.length || 0,
+        firstRowColumns: testData.values?.[0]?.length || 0
+      });
+      
+      const rawData = testData.values || [];
       
       if (rawData.length === 0) {
-        throw new Error('No data found in sheet');
+        throw new Error('No data found in sheet - the sheet may be empty or the range is incorrect');
       }
       
-      console.log(`Raw data fetched for ${sheet.name}:`, {
+      console.log(`✅ Data successfully fetched for ${sheet.name}:`, {
         totalRows: rawData.length,
         firstRowColumns: rawData[0]?.length || 0,
         sampleFirstRow: rawData[0]?.slice(0, 5)
@@ -128,6 +145,9 @@ export const DataInspector: React.FC = () => {
       
       const headers = rawData[0] || [];
       const dataRows = rawData.slice(1);
+      
+      console.log('Headers found:', headers.slice(0, 10));
+      console.log('Sample data row:', dataRows[0]?.slice(0, 10));
       
       // Analyze each column
       const columnAnalysis = headers.map((header, index) => {
@@ -144,6 +164,8 @@ export const DataInspector: React.FC = () => {
         };
       });
       
+      console.log('Column analysis complete:', columnAnalysis.length, 'columns analyzed');
+      
       updatedAnalyses[sheetIndex] = {
         ...updatedAnalyses[sheetIndex],
         totalRows: rawData.length - 1, // Exclude header
@@ -154,21 +176,23 @@ export const DataInspector: React.FC = () => {
         isLoading: false
       };
       
-      console.log(`Analysis complete for ${sheet.name}:`, updatedAnalyses[sheetIndex]);
+      console.log(`✅ Analysis complete for ${sheet.name}`);
       
     } catch (error) {
-      console.error(`Error analyzing sheet ${sheetIndex}:`, error);
+      console.error(`❌ Error analyzing sheet ${sheetIndex}:`, error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       updatedAnalyses[sheetIndex].error = errorMessage;
       updatedAnalyses[sheetIndex].isLoading = false;
       
       // Show more helpful error messages
-      if (errorMessage.includes('timeout')) {
-        updatedAnalyses[sheetIndex].error = 'Request timeout. The sheet may be very large or there may be API connectivity issues. Try again or check your API configuration.';
-      } else if (errorMessage.includes('API key')) {
-        updatedAnalyses[sheetIndex].error = 'API key issue. Make sure your Google Sheets API key is valid and has proper permissions.';
-      } else if (errorMessage.includes('sheet ID')) {
-        updatedAnalyses[sheetIndex].error = 'Sheet ID issue. Verify the Google Sheet ID is correct and the sheet is accessible.';
+      if (errorMessage.includes('500')) {
+        updatedAnalyses[sheetIndex].error = 'Server Error (500): This usually means the API key is invalid, expired, or doesn\'t have permission to access Google Sheets API. Check your API key in Google Cloud Console.';
+      } else if (errorMessage.includes('403')) {
+        updatedAnalyses[sheetIndex].error = 'Permission Denied (403): The API key doesn\'t have permission to access this sheet. Make sure the sheet is shared publicly or the API key has proper permissions.';
+      } else if (errorMessage.includes('404')) {
+        updatedAnalyses[sheetIndex].error = 'Sheet Not Found (404): The sheet ID is incorrect or the sheet doesn\'t exist. Double-check the Google Sheet ID.';
+      } else if (errorMessage.includes('400')) {
+        updatedAnalyses[sheetIndex].error = 'Bad Request (400): The range or sheet name is invalid. Check your range format (e.g., A1:Z1000).';
       }
     }
     
@@ -270,7 +294,11 @@ export const DataInspector: React.FC = () => {
                   <div className={`w-3 h-3 rounded-full ${analysis.sheetConfig.isActive ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">{analysis.sheetConfig.name}</h2>
-                    <p className="text-sm text-gray-500 capitalize">{analysis.sheetConfig.dataType} data</p>
+                    <p className="text-sm text-gray-500">
+                      <span className="capitalize">{analysis.sheetConfig.dataType} data</span>
+                      {!analysis.sheetConfig.isActive && <span className="text-orange-600 ml-2">(Inactive)</span>}
+                    </p>
+                    <p className="text-xs text-gray-400 font-mono">ID: {analysis.sheetConfig.sheetId}</p>
                   </div>
                 </div>
                 
@@ -280,7 +308,7 @@ export const DataInspector: React.FC = () => {
                   
                   <button
                     onClick={() => analyzeSheet(index)}
-                    disabled={analysis.isLoading || !analysis.sheetConfig.isActive}
+                    disabled={analysis.isLoading}
                     className="flex items-center gap-2 px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Eye className={`w-4 h-4 ${analysis.isLoading ? 'animate-pulse' : ''}`} />
@@ -290,8 +318,14 @@ export const DataInspector: React.FC = () => {
               </div>
               
               {analysis.error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-700">{analysis.error}</p>
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <h4 className="font-medium text-red-800 mb-2">Analysis Failed</h4>
+                  <p className="text-sm text-red-700 mb-3">{analysis.error}</p>
+                  <div className="text-xs text-red-600 bg-red-100 p-2 rounded font-mono">
+                    <p><strong>Sheet ID:</strong> {analysis.sheetConfig.sheetId}</p>
+                    <p><strong>Range:</strong> {analysis.sheetConfig.range}</p>
+                    <p><strong>API Key:</strong> {analysis.sheetConfig.apiKey ? 'Sheet-specific' : config?.globalApiKey ? 'Global' : 'Missing'}</p>
+                  </div>
                 </div>
               )}
             </div>
