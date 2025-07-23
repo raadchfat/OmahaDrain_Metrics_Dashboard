@@ -42,7 +42,7 @@ export const Dashboard: React.FC = () => {
       
       if (!savedConfig) {
         setConnectionStatus('no-config');
-        setConnectionMessage('No Google Sheets configuration found. Please configure your sheets in Settings.');
+        setConnectionMessage('Welcome! To get started with real data, please go to Settings and configure your Google Sheets API key and sheet IDs. Currently showing demo data.');
         setIsTestingConnection(false);
         return;
       }
@@ -51,14 +51,14 @@ export const Dashboard: React.FC = () => {
       
       if (!config.globalApiKey && !config.sheets.some(sheet => sheet.apiKey)) {
         setConnectionStatus('no-config');
-        setConnectionMessage('No API key configured. Please add your Google Sheets API key in Settings.');
+        setConnectionMessage('Please add your Google Sheets API key in Settings to connect to your real data. Currently showing demo data.');
         setIsTestingConnection(false);
         return;
       }
 
       if (config.sheets.length === 0) {
         setConnectionStatus('no-config');
-        setConnectionMessage('No sheets configured. Please add at least one Google Sheet in Settings.');
+        setConnectionMessage('Please add at least one Google Sheet in Settings to display your real data. Currently showing demo data.');
         setIsTestingConnection(false);
         return;
       }

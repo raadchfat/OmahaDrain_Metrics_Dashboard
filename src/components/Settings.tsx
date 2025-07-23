@@ -329,21 +329,26 @@ export const Settings: React.FC = () => {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">Multi-Sheet Setup Instructions</h3>
+        <h3 className="font-semibold text-blue-900 mb-2">🚀 Getting Started with Your Google Sheets</h3>
         <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
-          <li>Set up your global API key in the Google Developer Console</li>
-          <li>Add multiple sheets for different data sources (KPI data, time series, raw data)</li>
-          <li>Configure each sheet with its specific Sheet ID and data range</li>
-          <li>Use different data types to organize your information:
+          <li><strong>Get your API key:</strong> Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a>, create/select a project, enable Google Sheets API, and create an API key</li>
+          <li><strong>Configure API key:</strong> Set HTTP referrer restrictions to allow '*.netlify.app/*' and '*.webcontainer-api.io/*'</li>
+          <li><strong>Prepare your sheets:</strong> Make sure your Google Sheets are set to "Anyone with the link can view"</li>
+          <li><strong>Add your sheets:</strong> Click "Add Sheet" above and configure each sheet with its ID and data range</li>
+          <li><strong>Data types available:</strong>
             <ul className="ml-6 mt-1 list-disc">
               <li><strong>KPI Data:</strong> For calculated metrics and performance indicators</li>
               <li><strong>Time Series:</strong> For historical trend data</li>
               <li><strong>Raw Data:</strong> For unprocessed operational data</li>
             </ul>
           </li>
-          <li>Toggle sheets on/off to control which data sources are active</li>
-          <li>Test each connection to ensure proper access</li>
+          <li><strong>Test & activate:</strong> Use the "Test" button to verify connections, then toggle sheets on/off as needed</li>
         </ol>
+        <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-300">
+          <p className="text-sm text-blue-800">
+            <strong>💡 Pro tip:</strong> Your configuration is saved locally in your browser. Each user will need to set up their own API key and sheet connections.
+          </p>
+        </div>
       </div>
     </div>
   );
