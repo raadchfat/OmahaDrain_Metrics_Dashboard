@@ -33,6 +33,7 @@ export class MultiSheetService {
   private getCachedSheetData(sheetId: string): any[][] | null {
     return this.sheetDataCache.get(sheetId) || null;
   }
+  
   async fetchSheetData(sheetConfig: GoogleSheetConfig): Promise<any[][]> {
     const apiKey = sheetConfig.apiKey || this.config.globalApiKey;
     
@@ -46,6 +47,7 @@ export class MultiSheetService {
     if (!cleanSheetId) {
       throw new Error('Invalid Sheet ID format');
     }
+    
     try {
       // Make real API call to Google Sheets
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${cleanSheetId}/values/${sheetConfig.range}?key=${apiKey}`;
@@ -182,25 +184,25 @@ API Error: ${errorMessage}`);
         }
         
         if (soldLineItemsData) {
-        // Filter by date range if provided - try different date column positions
-        if (dateRange) {
-          const dataRows = soldLineItemsData.slice(1);
-          soldLineItemsSheetData = dataRows.filter(row => {
-            // Use column B (index 1) for date in Sold Line Items sheet
-            const rowDate = parseDateFromRow(row, 1);
-            return rowDate && isDateInRange(rowDate, dateRange);
-          });
-          
-          // If no rows found with date filtering, use all rows (might be no date column)
-          if (soldLineItemsSheetData.length === 0) {
-            console.warn('No date-filtered rows found in Sold Line Items using column B, using all rows');
-            soldLineItemsSheetData = dataRows;
+          // Filter by date range if provided - try different date column positions
+          if (dateRange) {
+            const dataRows = soldLineItemsData.slice(1);
+            soldLineItemsSheetData = dataRows.filter(row => {
+              // Use column B (index 1) for date in Sold Line Items sheet
+              const rowDate = parseDateFromRow(row, 1);
+              return rowDate && isDateInRange(rowDate, dateRange);
+            });
+            
+            // If no rows found with date filtering, use all rows (might be no date column)
+            if (soldLineItemsSheetData.length === 0) {
+              console.warn('No date-filtered rows found in Sold Line Items using column B, using all rows');
+              soldLineItemsSheetData = dataRows;
+            }
+          } else {
+            soldLineItemsSheetData = soldLineItemsData.slice(1);
           }
-        } else {
-          soldLineItemsSheetData = soldLineItemsData.slice(1);
-        }
-        
-        console.log(`Sold Line Items sheet processed: ${soldLineItemsSheetData.length} rows after filtering (using column B for dates)`);
+          
+          console.log(`Sold Line Items sheet processed: ${soldLineItemsSheetData.length} rows after filtering (using column B for dates)`);
         }
       } catch (error) {
         console.warn('Failed to fetch Sold Line Items sheet for jetting calculation:', error);
@@ -642,7 +644,6 @@ API Error: ${errorMessage}`);
     }
     
     console.log(`${sheetName}: Final row count for processing: ${rows.length}`);
-    }
     
     const totalCalls = rows.length;
     
