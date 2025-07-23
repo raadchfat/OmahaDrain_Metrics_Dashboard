@@ -270,8 +270,8 @@ export const Dashboard: React.FC = () => {
       title: 'Jetting Revenue per Call',
       value: kpiData.jettingRevenuePerCall,
       unit: '$',
-      description: 'Total jetting revenue divided by total number of jobs',
-      formula: 'Total Jetting Revenue ÷ Total Jobs Performed',
+      description: 'Total jetting revenue from all jetting line items divided by total jobs performed',
+      formula: 'Jetting Revenue per Service Call = Total Jetting Revenue ÷ Total Jobs Performed',
       color: 'purple' as const,
       trend: 'up' as const,
       trendValue: 8.5

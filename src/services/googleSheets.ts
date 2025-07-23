@@ -290,6 +290,23 @@ API Error: ${errorMessage}`);
     const jettingJobNumbers = new Set<string>();
     let totalJettingRevenue = 0;
     
+    // Calculate total jetting revenue from ALL jetting line items in date range
+    totalJettingRevenue = soldLineItemsData
+      .filter(row => {
+        const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+        const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+        
+        // Check if date is in range (if specified) and line item contains "jet"
+        const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
+        const isJettingItem = lineItem.includes('jet');
+        
+        return dateInRange && isJettingItem;
+      })
+      .reduce((sum, row) => {
+        const price = this.parseNumber(row[19]); // Column T (Price)
+        return sum + price;
+      }, 0);
+    
     for (const job of uniqueJobs) {
       // Check all line items for this job to see if any contain "jet"
       const jobLineItems = soldLineItemsData.filter(row => {
@@ -311,19 +328,6 @@ API Error: ${errorMessage}`);
       
       if (hasJettingService) {
         jettingJobNumbers.add(job.trim());
-        
-        // Sum revenue for all jetting line items for this job
-        const jobJettingRevenue = jobLineItems
-          .filter(row => {
-            const lineItem = this.getString(row, 17).toLowerCase(); // Column R
-            return lineItem.includes('jet');
-          })
-          .reduce((sum, row) => {
-            const revenue = this.parseNumber(row[24]); // Column Y (Price/Revenue)
-            return sum + revenue;
-          }, 0);
-        
-        totalJettingRevenue += jobJettingRevenue;
       }
     }
     
@@ -331,7 +335,7 @@ API Error: ${errorMessage}`);
     const jettingJobsCount = jettingJobNumbers.size;
     const jettingJobsPercentage = uniqueJobs.length > 0 ? (jettingJobsCount / uniqueJobs.length) * 100 : 0;
     
-    // Jetting Revenue per Call = Total Jetting Revenue ÷ Total Unique Jobs (not just jetting jobs)
+    // Jetting Revenue per Service Call = Total Jetting Revenue ÷ Total Jobs Performed
     const jettingRevenuePerCall = uniqueJobs.length > 0 ? totalJettingRevenue / uniqueJobs.length : 0;
     
     return {
