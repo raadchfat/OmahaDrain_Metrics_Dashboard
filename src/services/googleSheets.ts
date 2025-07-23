@@ -214,9 +214,9 @@ export class MultiSheetService {
     
     // Calculate jetting jobs rate using Sold Line Items sheet and Jobs Revenue sheet row count
     if (soldLineItemsSheetData.length > 0 && jobsRevenueSheetRowCount > 0) {
-      // Excel formula: =SUMIF(R:R,"*Jetting*",Y:Y)/SUMPRODUCT((ISNUMBER(SEARCH("Jetting",R:R)))/COUNTIFS(N:N,N:N&"",R:R,"*Jetting*"))
+      // Excel formula: =SUMIF('Sold Line Items'!R:R,"*Jetting*",'Sold Line Items'!Y:Y)/(COUNTA('Jobs Revenue'!A:A)-1)
       
-      // SUMIF(R:R,"*Jetting*",Y:Y) - Sum revenue where description contains "Jetting"
+      // SUMIF('Sold Line Items'!R:R,"*Jetting*",'Sold Line Items'!Y:Y) - Sum revenue where description contains "Jetting"
       const jettingRevenue = soldLineItemsSheetData
         .filter(row => {
           const description = this.getString(row, 17).toLowerCase(); // Column R (18th column, 0-indexed = 17)
@@ -227,35 +227,28 @@ export class MultiSheetService {
           return sum + revenue;
         }, 0);
       
-      // SUMPRODUCT((ISNUMBER(SEARCH("Jetting",R:R)))/COUNTIFS(N:N,N:N&"",R:R,"*Jetting*"))
-      // This counts unique job numbers (column N) where description (column R) contains "Jetting"
-      const jettingJobNumbers = new Map<string, number>();
-      
-      soldLineItemsSheetData.forEach(row => {
-        const description = this.getString(row, 1).toLowerCase();
-        const descriptionR = this.getString(row, 17).toLowerCase(); // Column R
-        const jobNumber = this.getString(row, 13); // Column N
-        
-        // Check if description in column R contains "jetting"
-        if (descriptionR.includes('jetting') && jobNumber && jobNumber.trim() !== '') {
-          const jobKey = jobNumber.trim();
-          jettingJobNumbers.set(jobKey, (jettingJobNumbers.get(jobKey) || 0) + 1);
-        }
-      });
-      
-      const uniqueJettingJobCount = jettingJobNumbers.size;
+      // (COUNTA('Jobs Revenue'!A:A)-1) - Count of rows in Jobs Revenue sheet minus header
+      const jobsRevenueRowCount = jobsRevenueSheetRowCount; // Already filtered by date range
       
       // Calculate jetting revenue per call using Jobs Revenue sheet row count as denominator
-      aggregatedData.jettingJobsPercentage = (uniqueJettingJobCount / jobsRevenueSheetRowCount) * 100;
+      aggregatedData.jettingRevenuePerCall = jobsRevenueRowCount > 0 ? jettingRevenue / jobsRevenueRowCount : 0;
       
-      // Excel formula result: SUMIF result ÷ SUMPRODUCT result
-      aggregatedData.jettingRevenuePerCall = uniqueJettingJobCount > 0 ? jettingRevenue / uniqueJettingJobCount : 0;
+      // For jetting jobs percentage, we can calculate based on jetting line items vs total calls
+      const jettingJobNumbers = new Set<string>();
+      soldLineItemsSheetData.forEach(row => {
+        const descriptionR = this.getString(row, 17).toLowerCase(); // Column R
+        const jobNumber = this.getString(row, 13); // Column N
+        if (descriptionR.includes('jetting') && jobNumber && jobNumber.trim() !== '') {
+          jettingJobNumbers.add(jobNumber.trim());
+        }
+      });
+      aggregatedData.jettingJobsPercentage = (jettingJobNumbers.size / jobsRevenueRowCount) * 100;
       
-      console.log('Excel SUMIF/SUMPRODUCT Jetting Calculation:', {
-        formula: '=SUMIF(R:R,"*Jetting*",Y:Y)/SUMPRODUCT((ISNUMBER(SEARCH("Jetting",R:R)))/COUNTIFS(N:N,N:N&"",R:R,"*Jetting*"))',
-        sumifResult: jettingRevenue, // SUMIF(R:R,"*Jetting*",Y:Y)
-        sumproductResult: uniqueJettingJobCount, // Count of unique job numbers where R contains "Jetting"
-        uniqueJettingJobs: Array.from(jettingJobNumbers.keys()).slice(0, 10),
+      console.log('Excel SUMIF Jetting Calculation:', {
+        formula: "=SUMIF('Sold Line Items'!R:R,\"*Jetting*\",'Sold Line Items'!Y:Y)/(COUNTA('Jobs Revenue'!A:A)-1)",
+        sumifResult: jettingRevenue, // SUMIF('Sold Line Items'!R:R,"*Jetting*",'Sold Line Items'!Y:Y)
+        countaResult: jobsRevenueRowCount, // (COUNTA('Jobs Revenue'!A:A)-1)
+        uniqueJettingJobs: Array.from(jettingJobNumbers).slice(0, 10),
         jettingRevenuePerJob: aggregatedData.jettingRevenuePerCall,
         jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
         dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
