@@ -233,7 +233,15 @@ API Error: ${errorMessage}`);
       aggregatedData.installCallsPercentage = installMetrics.installCallsPercentage;
       aggregatedData.installRevenuePerCall = installMetrics.installRevenuePerCall;
       
-      console.log('Install Calls Rate (Guide Method):', installMetrics);
+      console.log('Install Calls Rate (Guide Method) - DETAILED:', {
+        installCallsPercentage: installMetrics.installCallsPercentage,
+        installRevenuePerCall: installMetrics.installRevenuePerCall,
+        uniqueJobsCount: installMetrics.uniqueJobsCount,
+        installJobsCount: installMetrics.installJobsCount,
+        totalInstallRevenue: installMetrics.totalInstallRevenue,
+        soldLineItemsDataLength: soldLineItemsSheetData.length,
+        dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
+      });
     }
     
     // Calculate jetting jobs rate using Sold Line Items sheet
@@ -277,18 +285,37 @@ API Error: ${errorMessage}`);
     installJobsCount: number;
     totalInstallRevenue: number;
   } {
-    console.log('calculateInstallCallsRateFromGuide called with:', {
+    console.log('=== INSTALL CALLS RATE CALCULATION START ===');
+    console.log('Input data:', {
       totalRows: soldLineItemsData.length,
-      dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
+      dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time',
+      sampleRows: soldLineItemsData.slice(0, 3).map(row => ({
+        job: this.getString(row, 13),
+        invoiceDate: row[1],
+        department: this.getString(row, 16),
+        price: row[19]
+      }))
     });
 
     // Step 1: Get all unique jobs for Drain Cleaning within date range (Denominator)
     const drainCleaningJobs = new Set<string>();
+    let totalRowsProcessed = 0;
+    let drainCleaningRowsFound = 0;
     
     soldLineItemsData.forEach(row => {
+      totalRowsProcessed++;
       const job = this.getString(row, 13); // Column N (Job)
       const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
       const department = this.getString(row, 16).toLowerCase(); // Column Q (Department)
+      
+      if (totalRowsProcessed <= 5) {
+        console.log(`Row ${totalRowsProcessed} sample:`, {
+          job: job,
+          invoiceDate: invoiceDate,
+          department: department,
+          rawDepartment: row[16]
+        });
+      }
       
       // Check conditions: Invoice Date in range AND Department = "Drain cleaning"
       const dateInRange = !dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange));
@@ -296,10 +323,16 @@ API Error: ${errorMessage}`);
       
       if (job && job.trim() !== '' && dateInRange && isDrainCleaning) {
         drainCleaningJobs.add(job.trim());
+        drainCleaningRowsFound++;
       }
     });
     
-    console.log('Drain Cleaning Jobs (unique jobs):', drainCleaningJobs.size);
+    console.log('Step 1 - Drain Cleaning Jobs Analysis:', {
+      totalRowsProcessed,
+      drainCleaningRowsFound,
+      uniqueDrainCleaningJobs: drainCleaningJobs.size,
+      sampleJobs: Array.from(drainCleaningJobs).slice(0, 5)
+    });
     
     if (drainCleaningJobs.size === 0) {
       return {
@@ -313,9 +346,12 @@ API Error: ${errorMessage}`);
     
     // Step 2: Calculate total revenue per job for each Drain Cleaning job
     const jobRevenueMap = new Map<string, number>();
+    let jobsProcessed = 0;
     
     for (const job of drainCleaningJobs) {
+      jobsProcessed++;
       let totalRevenue = 0;
+      let lineItemsForJob = 0;
       
       // Sum all line items for this specific job within date range and Drain Cleaning department
       soldLineItemsData.forEach(row => {
@@ -331,23 +367,45 @@ API Error: ${errorMessage}`);
         
         if (jobMatches && dateInRange && isDrainCleaning) {
           totalRevenue += price;
+          lineItemsForJob++;
         }
       });
       
       jobRevenueMap.set(job, totalRevenue);
+      
+      if (jobsProcessed <= 5) {
+        console.log(`Job ${jobsProcessed} (${job}):`, {
+          totalRevenue,
+          lineItemsForJob,
+          isInstallJob: totalRevenue >= 10000
+        });
+      }
     }
+    
+    console.log('Step 2 - Job Revenue Analysis:', {
+      totalJobsProcessed: jobsProcessed,
+      jobRevenueMapSize: jobRevenueMap.size
+    });
     
     // Step 3: Count Install Jobs (Numerator)
     // Count unique jobs where sum of Price per Job ≥ $10,000
     let installJobsCount = 0;
     let totalInstallRevenue = 0;
+    const installJobs: string[] = [];
     
     for (const [job, revenue] of jobRevenueMap) {
       if (revenue >= 10000) {
         installJobsCount++;
         totalInstallRevenue += revenue;
+        installJobs.push(job);
       }
     }
+    
+    console.log('Step 3 - Install Jobs Analysis:', {
+      installJobsCount,
+      totalInstallRevenue,
+      installJobs: installJobs.slice(0, 5)
+    });
     
     // Step 4: Calculate Install Call Rate%
     const installCallsPercentage = drainCleaningJobs.size > 0 ? (installJobsCount / drainCleaningJobs.size) * 100 : 0;
@@ -355,18 +413,15 @@ API Error: ${errorMessage}`);
     // Install Revenue per Call = Total Install Jobs Revenue ÷ Total Drain Cleaning Jobs
     const installRevenuePerCall = drainCleaningJobs.size > 0 ? totalInstallRevenue / drainCleaningJobs.size : 0;
     
-    console.log('Install calculation results:', {
+    console.log('Step 4 - Final Install Calculation Results:', {
       totalDrainCleaningJobs: drainCleaningJobs.size,
       installJobsCount: installJobsCount,
       installCallsPercentage: installCallsPercentage.toFixed(2) + '%',
       totalInstallRevenue,
-      installRevenuePerCall: installRevenuePerCall.toFixed(2),
-      jobRevenueBreakdown: Array.from(jobRevenueMap.entries()).slice(0, 5).map(([job, revenue]) => ({
-        job,
-        revenue: revenue.toFixed(2),
-        isInstall: revenue >= 10000
-      }))
+      installRevenuePerCall: installRevenuePerCall.toFixed(2)
     });
+    
+    console.log('=== INSTALL CALLS RATE CALCULATION END ===');
     
     return {
       installCallsPercentage,
