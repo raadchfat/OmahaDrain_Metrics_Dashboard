@@ -226,12 +226,14 @@ API Error: ${errorMessage}`);
         .filter(row => {
           const rowJob = this.getString(row, 13); // Column N (Job)
           const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+          const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
           
-          // Check if job matches and date is in range (if specified)
+          // Check if job matches, date is in range (if specified), and department is Drain Cleaning
           const jobMatches = rowJob.trim() === job.trim();
           const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
+          const isDrainCleaning = department === 'drain cleaning';
           
-          return jobMatches && dateInRange;
+          return jobMatches && dateInRange && isDrainCleaning;
         })
         .reduce((sum, row) => {
           const price = this.parseNumber(row[19]); // Column T (Price)
@@ -304,12 +306,14 @@ API Error: ${errorMessage}`);
       .filter(row => {
         const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
         const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+        const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
         
-        // Check if date is in range (if specified) and line item contains "jet"
+        // Check if date is in range (if specified), line item contains "jet", and department is Drain Cleaning
         const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
         const isJettingItem = lineItem.includes('jet');
+        const isDrainCleaning = department === 'drain cleaning';
         
-        return dateInRange && isJettingItem;
+        return dateInRange && isJettingItem && isDrainCleaning;
       })
       .reduce((sum, row) => {
         const price = this.parseNumber(row[19]); // Column T (Price)
@@ -321,12 +325,14 @@ API Error: ${errorMessage}`);
       const jobLineItems = soldLineItemsData.filter(row => {
         const rowJob = this.getString(row, 13); // Column N (Job)
         const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+        const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
         
-        // Check if job matches and date is in range (if specified)
+        // Check if job matches, date is in range (if specified), and department is Drain Cleaning
         const jobMatches = rowJob.trim() === job.trim();
         const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
+        const isDrainCleaning = department === 'drain cleaning';
         
-        return jobMatches && dateInRange;
+        return jobMatches && dateInRange && isDrainCleaning;
       });
       
       // Check if any line item for this job contains "jet" in Line Item column (R)
@@ -394,12 +400,14 @@ API Error: ${errorMessage}`);
       .filter(row => {
         const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
         const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+        const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
         
-        // Check if date is in range (if specified) and line item contains "desc"
+        // Check if date is in range (if specified), line item contains "desc", and department is Drain Cleaning
         const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
         const isDescalingItem = lineItem.includes('desc');
+        const isDrainCleaning = department === 'drain cleaning';
         
-        return dateInRange && isDescalingItem;
+        return dateInRange && isDescalingItem && isDrainCleaning;
       })
       .reduce((sum, row) => {
         const price = this.parseNumber(row[19]); // Column T (Price)
@@ -411,12 +419,14 @@ API Error: ${errorMessage}`);
       const jobLineItems = soldLineItemsData.filter(row => {
         const rowJob = this.getString(row, 13); // Column N (Job)
         const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+        const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
         
-        // Check if job matches and date is in range (if specified)
+        // Check if job matches, date is in range (if specified), and department is Drain Cleaning
         const jobMatches = rowJob.trim() === job.trim();
         const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
+        const isDrainCleaning = department === 'drain cleaning';
         
-        return jobMatches && dateInRange;
+        return jobMatches && dateInRange && isDrainCleaning;
       });
       
       // Check if any line item for this job contains "desc" in Line Item column (R)
@@ -455,10 +465,11 @@ API Error: ${errorMessage}`);
     soldLineItemsData.forEach(row => {
       const job = this.getString(row, 13); // Column N (Job)
       const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+      const department = this.getString(row, 15).toLowerCase(); // Column P (Department)
       
-      // Only include jobs within the date range (if specified)
+      // Only include jobs within the date range (if specified) and from Drain Cleaning department
       if (job && job.trim() !== '') {
-        if (!dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange))) {
+        if (department === 'drain cleaning' && (!dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange)))) {
           uniqueJobs.add(job.trim());
         }
       }
