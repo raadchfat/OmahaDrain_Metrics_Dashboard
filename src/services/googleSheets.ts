@@ -800,6 +800,7 @@ API Error: ${errorMessage}`);
       }
       const response = await fetch(url, {
         method: 'GET',
+    try {
         headers: {
           'Accept': 'application/json',
         }
@@ -819,6 +820,7 @@ API Error: ${errorMessage}`);
     } catch (error) {
       console.error(`Sheet connection test failed for ${sheet.name}:`, error);
       return false;
+    }
     }
   }
 
