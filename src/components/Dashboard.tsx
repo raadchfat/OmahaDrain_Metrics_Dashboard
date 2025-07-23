@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TestTube, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { TestTube, CheckCircle, XCircle, AlertCircle, Database } from 'lucide-react';
 import { KPICard } from './charts/KPICard';
 import { TrendChart } from './charts/TrendChart';
 import { TimeFrameFilter } from './filters/TimeFrameFilter';
@@ -16,6 +16,7 @@ export const Dashboard: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error' | 'no-config'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [soldLineItemsTest, setSoldLineItemsTest] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -108,6 +109,127 @@ export const Dashboard: React.FC = () => {
 
     setIsTestingConnection(false);
   };
+
+  const testSoldLineItemsSheet = async () => {
+    console.log('Testing Sold Line Items sheet specifically...');
+    
+    try {
+      const savedConfig = localStorage.getItem('multiSheetConfig');
+      
+      if (!savedConfig) {
+        setSoldLineItemsTest({
+          status: 'error',
+          message: 'No configuration found'
+        });
+        return;
+      }
+
+      const config: MultiSheetConfig = JSON.parse(savedConfig);
+      const soldLineItemsSheet = config.sheets.find(sheet =>
+        sheet.sheetId === '1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0'
+      );
+      
+      if (!soldLineItemsSheet) {
+        setSoldLineItemsTest({
+          status: 'error',
+          message: 'Sold Line Items sheet not found in configuration. Please add sheet ID: 1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0'
+        });
+        return;
+      }
+
+      if (!soldLineItemsSheet.isActive) {
+        setSoldLineItemsTest({
+          status: 'warning',
+          message: 'Sold Line Items sheet is configured but not active'
+        });
+        return;
+      }
+
+      const multiSheetService = new MultiSheetService(config);
+      
+      // Test fetching data
+      const data = await multiSheetService.fetchSheetData(soldLineItemsSheet);
+      
+      if (!data || data.length === 0) {
+        setSoldLineItemsTest({
+          status: 'error',
+          message: 'No data returned from Sold Line Items sheet'
+        });
+        return;
+      }
+
+      // Analyze the data structure
+      const headerRow = data[0] || [];
+      const dataRows = data.slice(1);
+      const sampleRows = dataRows.slice(0, 5);
+      
+      // Check for key columns we need
+      const columnAnalysis = {
+        columnB_InvoiceDate: headerRow[1] || 'Column B',
+        columnN_Job: headerRow[13] || 'Column N', 
+        columnQ_Department: headerRow[16] || 'Column Q',
+        columnR_LineItem: headerRow[17] || 'Column R',
+        columnT_Price: headerRow[19] || 'Column T'
+      };
+      
+      // Count drain cleaning jobs
+      const drainCleaningJobs = dataRows.filter(row => {
+        const department = (row[16] || '').toString().toLowerCase();
+        return department === 'drain cleaning';
+      }).length;
+      
+      // Count jetting line items
+      const jettingItems = dataRows.filter(row => {
+        const lineItem = (row[17] || '').toString().toLowerCase();
+        const department = (row[16] || '').toString().toLowerCase();
+        return department === 'drain cleaning' && lineItem.includes('jet');
+      }).length;
+      
+      // Count install jobs (≥$10k)
+      const installJobs = new Set();
+      dataRows.forEach(row => {
+        const job = (row[13] || '').toString().trim();
+        const department = (row[16] || '').toString().toLowerCase();
+        if (job && department === 'drain cleaning') {
+          // Calculate total revenue for this job
+          const jobRevenue = dataRows
+            .filter(r => (r[13] || '').toString().trim() === job && (r[16] || '').toString().toLowerCase() === 'drain cleaning')
+            .reduce((sum, r) => {
+              const price = parseFloat((r[19] || '0').toString().replace(/[$,]/g, ''));
+              return sum + (isNaN(price) ? 0 : price);
+            }, 0);
+          
+          if (jobRevenue >= 10000) {
+            installJobs.add(job);
+          }
+        }
+      });
+
+      setSoldLineItemsTest({
+        status: 'success',
+        message: `Successfully connected to Sold Line Items sheet!`,
+        details: {
+          totalRows: data.length,
+          dataRows: dataRows.length,
+          headerRow: headerRow.slice(0, 25), // Show first 25 columns
+          sampleRows: sampleRows.map(row => row.slice(0, 25)),
+          columnAnalysis,
+          drainCleaningJobs,
+          jettingItems,
+          installJobsCount: installJobs.size,
+          uniqueJobs: new Set(dataRows.map(row => (row[13] || '').toString().trim()).filter(job => job)).size
+        }
+      });
+      
+    } catch (error) {
+      console.error('Sold Line Items test error:', error);
+      setSoldLineItemsTest({
+        status: 'error',
+        message: `Failed to connect: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    }
+  };
+
   const loadData = async () => {
     setIsLoading(true);
     setConnectionStatus('idle');
@@ -438,6 +560,13 @@ export const Dashboard: React.FC = () => {
             <TestTube className={`w-4 h-4 ${isTestingConnection ? 'animate-pulse' : ''}`} />
             {isTestingConnection ? 'Testing...' : 'Test Connection'}
           </button>
+          <button
+            onClick={testSoldLineItemsSheet}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+          >
+            <Database className="w-4 h-4" />
+            Test Sold Line Items
+          </button>
           <TimeFrameFilter selected={timeFrame} onSelect={setTimeFrame} />
         </div>
       </div>
@@ -469,6 +598,111 @@ export const Dashboard: React.FC = () => {
               {connectionMessage}
             </p>
           </div>
+        </div>
+      )}
+
+      {soldLineItemsTest && (
+        <div className={`p-6 rounded-lg border ${
+          soldLineItemsTest.status === 'success' ? 'bg-green-50 border-green-200' :
+          soldLineItemsTest.status === 'warning' ? 'bg-yellow-50 border-yellow-200' :
+          'bg-red-50 border-red-200'
+        }`}>
+          <div className="flex items-start gap-3 mb-4">
+            {soldLineItemsTest.status === 'success' && <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />}
+            {soldLineItemsTest.status === 'warning' && <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />}
+            {soldLineItemsTest.status === 'error' && <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />}
+            <div>
+              <h3 className={`font-medium ${
+                soldLineItemsTest.status === 'success' ? 'text-green-800' :
+                soldLineItemsTest.status === 'warning' ? 'text-yellow-800' :
+                'text-red-800'
+              }`}>
+                Sold Line Items Sheet Test
+              </h3>
+              <p className={`text-sm mt-1 ${
+                soldLineItemsTest.status === 'success' ? 'text-green-700' :
+                soldLineItemsTest.status === 'warning' ? 'text-yellow-700' :
+                'text-red-700'
+              }`}>
+                {soldLineItemsTest.message}
+              </p>
+            </div>
+          </div>
+          
+          {soldLineItemsTest.details && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-3 rounded border">
+                  <div className="text-sm font-medium text-gray-600">Total Rows</div>
+                  <div className="text-lg font-bold text-gray-900">{soldLineItemsTest.details.totalRows.toLocaleString()}</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="text-sm font-medium text-gray-600">Drain Cleaning Jobs</div>
+                  <div className="text-lg font-bold text-blue-600">{soldLineItemsTest.details.drainCleaningJobs.toLocaleString()}</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="text-sm font-medium text-gray-600">Jetting Line Items</div>
+                  <div className="text-lg font-bold text-orange-600">{soldLineItemsTest.details.jettingItems.toLocaleString()}</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="text-sm font-medium text-gray-600">Install Jobs (≥$10k)</div>
+                  <div className="text-lg font-bold text-green-600">{soldLineItemsTest.details.installJobsCount.toLocaleString()}</div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded border">
+                <h4 className="font-medium text-gray-900 mb-2">Column Analysis</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2 text-sm">
+                  <div><span className="font-medium">Column B:</span> {soldLineItemsTest.details.columnAnalysis.columnB_InvoiceDate}</div>
+                  <div><span className="font-medium">Column N:</span> {soldLineItemsTest.details.columnAnalysis.columnN_Job}</div>
+                  <div><span className="font-medium">Column Q:</span> {soldLineItemsTest.details.columnAnalysis.columnQ_Department}</div>
+                  <div><span className="font-medium">Column R:</span> {soldLineItemsTest.details.columnAnalysis.columnR_LineItem}</div>
+                  <div><span className="font-medium">Column T:</span> {soldLineItemsTest.details.columnAnalysis.columnT_Price}</div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded border">
+                <h4 className="font-medium text-gray-900 mb-2">Header Row (First 25 Columns)</h4>
+                <div className="text-xs font-mono bg-gray-50 p-2 rounded overflow-x-auto">
+                  {soldLineItemsTest.details.headerRow.map((header: any, index: number) => (
+                    <span key={index} className="inline-block mr-4 min-w-0">
+                      <span className="text-gray-500">{String.fromCharCode(65 + index)}:</span> {header || '(empty)'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded border">
+                <h4 className="font-medium text-gray-900 mb-2">Sample Data Rows (First 5)</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-2 py-1 text-left">Row</th>
+                        <th className="px-2 py-1 text-left">B (Date)</th>
+                        <th className="px-2 py-1 text-left">N (Job)</th>
+                        <th className="px-2 py-1 text-left">Q (Dept)</th>
+                        <th className="px-2 py-1 text-left">R (Line Item)</th>
+                        <th className="px-2 py-1 text-left">T (Price)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {soldLineItemsTest.details.sampleRows.map((row: any[], rowIndex: number) => (
+                        <tr key={rowIndex} className="border-t">
+                          <td className="px-2 py-1 font-medium">{rowIndex + 1}</td>
+                          <td className="px-2 py-1">{row[1] || '(empty)'}</td>
+                          <td className="px-2 py-1">{row[13] || '(empty)'}</td>
+                          <td className="px-2 py-1">{row[16] || '(empty)'}</td>
+                          <td className="px-2 py-1 max-w-32 truncate">{row[17] || '(empty)'}</td>
+                          <td className="px-2 py-1">{row[19] || '(empty)'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
