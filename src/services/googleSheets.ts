@@ -214,25 +214,22 @@ export class MultiSheetService {
     
     // Calculate jetting jobs rate using Sold Line Items sheet and Jobs Revenue sheet row count
     if (soldLineItemsSheetData.length > 0 && jobsRevenueSheetRowCount > 0) {
-      const jettingJobs = soldLineItemsSheetData.filter(row => {
+      // Filter sold line items by "jetting" (like Excel filter)
+      const jettingLineItems = soldLineItemsSheetData.filter(row => {
         const description = this.getString(row, 1).toLowerCase();
         return description.includes('jetting') || description.includes('jet');
       }).length;
       
-      // Calculate jetting revenue from Sold Line Items sheet using price column
-      const jettingRevenue = soldLineItemsSheetData
-        .filter(row => {
-          const description = this.getString(row, 1).toLowerCase();
-          return description.includes('jetting') || description.includes('jet');
-        })
+      // Calculate jetting revenue from filtered jetting line items
+      const jettingRevenue = jettingLineItems
         .reduce((sum, row) => {
           const revenue = this.getPriceFromRow(row, sheetDataCache.get('1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0'));
           return sum + revenue;
         }, 0);
       
-      // Get unique job numbers from Sold Line Items sheet (assuming job # is in column A or first column)
+      // Get unique job numbers from the filtered jetting line items (column N)
       const uniqueJobNumbers = new Set();
-      soldLineItemsSheetData.forEach(row => {
+      jettingLineItems.forEach(row => {
         const jobNumber = this.getString(row, 13); // Column N for job # (N = 14th column, 0-indexed = 13)
         if (jobNumber && jobNumber.trim() !== '') {
           uniqueJobNumbers.add(jobNumber.trim());
@@ -241,25 +238,23 @@ export class MultiSheetService {
       const uniqueJobCount = uniqueJobNumbers.size;
       
       aggregatedData.jettingJobsPercentage = (jettingJobs / jobsRevenueSheetRowCount) * 100;
+      // Excel-style calculation: Total jetting revenue ÷ Count of unique job IDs from jetting items
       aggregatedData.jettingRevenuePerCall = uniqueJobCount > 0 ? jettingRevenue / uniqueJobCount : 0;
       
       console.log('Jetting Jobs Calculation (filtered):', {
-        jettingJobsFromSoldLineItems: jettingJobs,
+        jettingLineItemsCount: jettingLineItems.length,
         jettingRevenueFromSoldLineItems: jettingRevenue,
-        uniqueJobNumbers: Array.from(uniqueJobNumbers).slice(0, 10), // Show first 10 unique job numbers
+        uniqueJobNumbersFromJettingItems: Array.from(uniqueJobNumbers).slice(0, 10), // Show first 10 unique job numbers from jetting items only
         uniqueJobCount: uniqueJobCount,
-        jettingJobsDetails: soldLineItemsSheetData
-          .filter(row => {
-            const description = this.getString(row, 1).toLowerCase();
-            return description.includes('jetting') || description.includes('jet');
-          })
+        jettingItemsDetails: jettingLineItems
           .map(row => ({
             description: this.getString(row, 1),
+            jobNumber: this.getString(row, 13),
             priceValue: this.getPriceFromRow(row, sheetDataCache.get('1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0')),
             fullRow: row.slice(0, 5) // Show first 5 columns for context
           })),
-        jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
-        jettingRevenuePerCall: aggregatedData.jettingRevenuePerCall,
+        calculationFormula: 'Total Jetting Revenue ÷ Count of Unique Job IDs (from jetting items only)',
+        jettingRevenuePerJob: aggregatedData.jettingRevenuePerCall,
         dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
       });
     }
