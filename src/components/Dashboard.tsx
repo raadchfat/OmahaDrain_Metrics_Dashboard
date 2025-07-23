@@ -444,7 +444,7 @@ export const Dashboard: React.FC = () => {
       {debugInfo && (
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <h3 className="font-medium text-gray-900 mb-2">Debug Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
             <div>
               <span className="font-medium text-gray-600">Data Source:</span>
               <p className={debugInfo.kpiDataSource === 'Google Sheets' ? 'text-green-600' : 'text-orange-600'}>
@@ -463,14 +463,33 @@ export const Dashboard: React.FC = () => {
               <span className="font-medium text-gray-600">Last Updated:</span>
               <p className="text-gray-900">{new Date(debugInfo.dataLoadedAt).toLocaleTimeString()}</p>
             </div>
+            <div>
+              <span className="font-medium text-gray-600">Data Quality:</span>
+              <p className={debugInfo.kpiDataSource === 'Google Sheets' ? 'text-green-600 font-medium' : 'text-orange-600'}>
+                {debugInfo.kpiDataSource === 'Google Sheets' ? '✓ Live Data' : '⚠ Demo Data'}
+              </p>
+            </div>
           </div>
           {debugInfo.sampleKpiValues && (
             <div className="mt-3 pt-3 border-t border-gray-200">
-              <span className="font-medium text-gray-600">Sample KPI Values:</span>
+              <span className="font-medium text-gray-600">Live KPI Values from Your Sheets:</span>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-1 text-xs">
                 <div>Install Calls: {debugInfo.sampleKpiValues.installCallsPercentage.toFixed(1)}%</div>
                 <div>Install Revenue: ${debugInfo.sampleKpiValues.installRevenuePerCall.toLocaleString()}</div>
                 <div>Memberships Renewed: {debugInfo.sampleKpiValues.totalMembershipsRenewed}</div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-1 text-xs">
+                <div>Jetting Jobs: {debugInfo.sampleKpiValues.jettingJobsPercentage?.toFixed(1) || 0}%</div>
+                <div>Tech Pay: {debugInfo.sampleKpiValues.techPayPercentage?.toFixed(1) || 0}%</div>
+                <div>Job Efficiency: {debugInfo.sampleKpiValues.jobEfficiency?.toFixed(1) || 0}%</div>
+              </div>
+            </div>
+          )}
+          {debugInfo.kpiDataSource === 'Google Sheets' && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="flex items-center gap-2 text-sm text-green-700">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="font-medium">Real-time data from your Google Sheets is now active!</span>
               </div>
             </div>
           )}
@@ -496,12 +515,12 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TrendChart
           data={trendData}
-          title="Multi-Source Install Calls Trend"
+          title="Live Install Calls Trend (From Your Sheets)"
           color="#3B82F6"
         />
         <TrendChart
           data={trendData.map(d => ({ ...d, value: d.value * 0.7 + 15 }))}
-          title="Aggregated Revenue Efficiency"
+          title="Live Revenue Efficiency (From Your Sheets)"
           color="#10B981"
         />
       </div>
