@@ -23,6 +23,8 @@ export const Dashboard: React.FC = () => {
     setIsTestingConnection(true);
     setConnectionStatus('idle');
     setConnectionMessage('');
+    
+    console.log('Starting Google Sheets connection test...');
 
     try {
       // Load configuration from localStorage
@@ -61,34 +63,37 @@ export const Dashboard: React.FC = () => {
       for (const sheet of activeSheets) {
         try {
           const isConnected = await multiSheetService.testSheetConnection(sheet);
+          console.log(`Testing sheet ${sheet.name}:`, isConnected);
           if (isConnected) {
             // Try to fetch actual data to verify it works
             const data = await multiSheetService.fetchSheetData(sheet);
-            console.log(`Sheet ${sheet.name} data preview:`, data.slice(0, 3));
+            console.log(`Sheet ${sheet.name} connected successfully. Rows found:`, data.length);
+            console.log(`First few rows:`, data.slice(0, 3));
           }
           successCount++;
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Connection failed';
           errorMessages.push(`${sheet.name}: ${errorMsg}`);
-          console.error(`Connection test failed for ${sheet.name}:`, error);
+          console.error(`Connection test failed for ${sheet.name}:`, errorMsg);
         }
       }
 
       if (successCount === activeSheets.length) {
         setConnectionStatus('success');
-        setConnectionMessage(`Successfully connected to all ${successCount} active sheet(s)! Data is being processed for KPI calculations.`);
+        setConnectionMessage(`Successfully connected to all ${successCount} active sheet(s)! Ready to calculate KPIs from your Google Sheets data.`);
       } else if (successCount > 0) {
         setConnectionStatus('error');
         setConnectionMessage(`Connected to ${successCount}/${activeSheets.length} sheets. Issues found: ${errorMessages.slice(0, 2).join('; ')}${errorMessages.length > 2 ? '...' : ''}`);
       } else {
         setConnectionStatus('error');
-        setConnectionMessage(`Failed to connect to any sheets. Common issues: ${errorMessages.slice(0, 1).join('')}. Check your API key configuration in Google Cloud Console.`);
+        setConnectionMessage(`Failed to connect to any sheets. Issues: ${errorMessages.slice(0, 2).join('; ')}. Please verify your API key and sheet permissions.`);
       }
 
     } catch (error) {
       setConnectionStatus('error');
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      setConnectionMessage(`Connection test failed: ${errorMsg}. Please verify your Google Cloud Console settings.`);
+      setConnectionMessage(`Connection test failed: ${errorMsg}`);
+      console.error('Connection test error:', error);
     }
 
     setIsTestingConnection(false);
