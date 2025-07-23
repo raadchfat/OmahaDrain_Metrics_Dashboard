@@ -21,7 +21,30 @@ export const Settings: React.FC = () => {
 
   const handleSave = () => {
     localStorage.setItem('multiSheetConfig', JSON.stringify(config));
-    alert('Settings saved successfully!');
+    // Show a temporary success message instead of alert
+    const button = document.querySelector('[data-save-button]') as HTMLButtonElement;
+    if (button) {
+      const originalText = button.textContent;
+      button.textContent = 'Saved!';
+      button.classList.add('bg-green-600', 'hover:bg-green-700');
+      button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+      setTimeout(() => {
+        button.textContent = originalText;
+        button.classList.remove('bg-green-600', 'hover:bg-green-700');
+        button.classList.add('bg-blue-600', 'hover:bg-blue-700');
+      }, 2000);
+    }
+  };
+
+  // Auto-save when config changes
+  useEffect(() => {
+    if (config.sheets.length > 0 || config.globalApiKey) {
+      localStorage.setItem('multiSheetConfig', JSON.stringify(config));
+    }
+  }, [config]);
+
+  const handleGlobalApiKeyChange = (value: string) => {
+    setConfig({ ...config, globalApiKey: value });
   };
 
   const addNewSheet = () => {
@@ -113,7 +136,7 @@ export const Settings: React.FC = () => {
               id="globalApiKey"
               type="password"
               value={config.globalApiKey}
-              onChange={(e) => setConfig({ ...config, globalApiKey: e.target.value })}
+              onChange={(e) => handleGlobalApiKeyChange(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter your global API key (used for all sheets unless overridden)"
             />
@@ -296,10 +319,11 @@ export const Settings: React.FC = () => {
         <div className="flex gap-4 mt-6">
           <button
             onClick={handleSave}
+            data-save-button
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
           >
             <Save className="w-4 h-4" />
-            Save All Settings
+            Save Settings
           </button>
         </div>
       </div>
