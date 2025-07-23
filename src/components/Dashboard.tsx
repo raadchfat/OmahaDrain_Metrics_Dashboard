@@ -60,7 +60,12 @@ export const Dashboard: React.FC = () => {
 
       for (const sheet of activeSheets) {
         try {
-          await multiSheetService.testSheetConnection(sheet);
+          const isConnected = await multiSheetService.testSheetConnection(sheet);
+          if (isConnected) {
+            // Try to fetch actual data to verify it works
+            const data = await multiSheetService.fetchSheetData(sheet);
+            console.log(`Sheet ${sheet.name} data preview:`, data.slice(0, 3));
+          }
           successCount++;
         } catch (error) {
           errorMessages.push(`${sheet.name}: ${error instanceof Error ? error.message : 'Connection failed'}`);
@@ -69,7 +74,7 @@ export const Dashboard: React.FC = () => {
 
       if (successCount === activeSheets.length) {
         setConnectionStatus('success');
-        setConnectionMessage(`Successfully connected to all ${successCount} active sheet(s)!`);
+        setConnectionMessage(`Successfully connected to all ${successCount} active sheet(s)! Data is being processed for KPI calculations.`);
       } else if (successCount > 0) {
         setConnectionStatus('error');
         setConnectionMessage(`Connected to ${successCount}/${activeSheets.length} sheets. Errors: ${errorMessages.join(', ')}`);
