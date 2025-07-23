@@ -184,25 +184,80 @@ API Error: ${errorMessage}`);
         }
         
         if (soldLineItemsData) {
+          console.log('=== SOLD LINE ITEMS DATA ANALYSIS ===');
+          console.log('Total rows (including header):', soldLineItemsData.length);
+          console.log('Header row:', soldLineItemsData[0]);
+          console.log('Sample data rows (first 3):');
+          soldLineItemsData.slice(1, 4).forEach((row, index) => {
+            console.log(`Row ${index + 2}:`, {
+              columnA: row[0],
+              columnB: row[1], 
+              columnN: row[13],
+              columnQ: row[16],
+              columnR: row[17],
+              columnT: row[19]
+            });
+          });
+          
           // Filter by date range if provided - try different date column positions
           if (dateRange) {
-            const dataRows = soldLineItemsData.slice(1);
-            soldLineItemsSheetData = dataRows.filter(row => {
-              // Use column B (index 1) for date in Sold Line Items sheet
-              const rowDate = parseDateFromRow(row, 1);
-              return rowDate && isDateInRange(rowDate, dateRange);
+            console.log('Filtering by date range:', {
+              start: dateRange.start.toLocaleDateString(),
+              end: dateRange.end.toLocaleDateString()
             });
             
-            // If no rows found with date filtering, use all rows (might be no date column)
+            const dataRows = soldLineItemsData.slice(1);
+            
+            // Try multiple date columns to find the right one
+            let bestDateColumn = -1;
+            let maxValidDates = 0;
+            
+            // Test columns A, B, C for date data
+            for (let colIndex = 0; colIndex <= 2; colIndex++) {
+              const validDatesCount = dataRows.slice(0, Math.min(10, dataRows.length))
+                .filter(row => {
+                  const date = parseDateFromRow(row, colIndex);
+                  return date !== null;
+                }).length;
+              
+              console.log(`Column ${String.fromCharCode(65 + colIndex)} valid dates:`, validDatesCount);
+              
+              if (validDatesCount > maxValidDates) {
+                maxValidDates = validDatesCount;
+                bestDateColumn = colIndex;
+              }
+            }
+            
+            console.log('Best date column found:', bestDateColumn >= 0 ? String.fromCharCode(65 + bestDateColumn) : 'none');
+            
+            if (bestDateColumn >= 0) {
+              soldLineItemsSheetData = dataRows.filter(row => {
+                const rowDate = parseDateFromRow(row, bestDateColumn);
+                const inRange = rowDate && isDateInRange(rowDate, dateRange);
+                return inRange;
+              });
+              
+              console.log(`Date filtering results using column ${String.fromCharCode(65 + bestDateColumn)}:`, {
+                originalRows: dataRows.length,
+                filteredRows: soldLineItemsSheetData.length,
+                sampleFilteredDates: soldLineItemsSheetData.slice(0, 3).map(row => parseDateFromRow(row, bestDateColumn))
+              });
+            } else {
+              console.warn('No valid date column found, using all rows');
+              soldLineItemsSheetData = dataRows;
+            }
+            
             if (soldLineItemsSheetData.length === 0) {
-              console.warn('No date-filtered rows found in Sold Line Items using column B, using all rows');
+              console.warn('No date-filtered rows found, using all rows');
               soldLineItemsSheetData = dataRows;
             }
           } else {
+            console.log('No date range specified, using all data rows');
             soldLineItemsSheetData = soldLineItemsData.slice(1);
           }
           
-          console.log(`Sold Line Items sheet processed: ${soldLineItemsSheetData.length} rows after filtering (using column B for dates)`);
+          console.log(`Sold Line Items sheet processed: ${soldLineItemsSheetData.length} rows after filtering`);
+          console.log('=== END SOLD LINE ITEMS DATA ANALYSIS ===');
         }
       } catch (error) {
         console.warn('Failed to fetch Sold Line Items sheet for jetting calculation:', error);
