@@ -14,16 +14,24 @@ export class MultiSheetService {
       throw new Error('Missing API key or Sheet ID');
     }
 
+    // Clean the sheet ID to remove any leading/trailing slashes or whitespace
+    const cleanSheetId = sheetConfig.sheetId.trim().replace(/^\/+|\/+$/g, '');
+    
+    if (!cleanSheetId) {
+      throw new Error('Invalid Sheet ID format');
+    }
     try {
       // Make real API call to Google Sheets
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetConfig.sheetId}/values/${sheetConfig.range}?key=${apiKey}`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${cleanSheetId}/values/${sheetConfig.range}?key=${apiKey}`;
       
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
+          'Content-Type': 'application/json',
         },
-        mode: 'cors'
+        mode: 'cors',
+        credentials: 'omit'
       });
       
       if (!response.ok) {
