@@ -52,7 +52,7 @@ export const Settings: React.FC = () => {
       sheetId: '',
       name: `Sheet ${config.sheets.length + 1}`,
       apiKey: '',
-      range: 'A1:Z1000',
+      range: 'A1:Z10000',
       refreshInterval: 300,
       isActive: true,
       dataType: 'kpi'
@@ -276,7 +276,7 @@ export const Settings: React.FC = () => {
                           value={sheet.range}
                           onChange={(e) => updateSheet(index, { ...sheet, range: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="A1:Z1000"
+                          placeholder="A1:Z10000"
                         />
                       </div>
                       <div>
