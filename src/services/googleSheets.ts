@@ -207,15 +207,15 @@ export class MultiSheetService {
         return description.includes('jetting') || description.includes('jet');
       }).length;
       
-      // Calculate jetting revenue from Sold Line Items sheet
+      // Calculate jetting revenue from Sold Line Items sheet using price column
       const jettingRevenue = soldLineItemsSheetData
         .filter(row => {
           const description = this.getString(row, 1).toLowerCase();
           return description.includes('jetting') || description.includes('jet');
         })
         .reduce((sum, row) => {
-          // Assuming revenue/price is in column 3 or 4 of Sold Line Items sheet
-          const revenue = this.parseNumber(row[3]) || this.parseNumber(row[2]) || 0;
+          // Find the price column from the header row
+          const revenue = this.getPriceFromRow(row, sheetDataCache.get('1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0'));
           return sum + revenue;
         }, 0);
       
@@ -232,9 +232,7 @@ export class MultiSheetService {
           })
           .map(row => ({
             description: this.getString(row, 1),
-            revenueCol2: this.parseNumber(row[2]),
-            revenueCol3: this.parseNumber(row[3]),
-            usedRevenue: this.parseNumber(row[3]) || this.parseNumber(row[2]) || 0,
+            priceValue: this.getPriceFromRow(row, sheetDataCache.get('1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0')),
             fullRow: row.slice(0, 5) // Show first 5 columns for context
           })),
         jobsRevenueSheetRowCount,
@@ -533,6 +531,32 @@ export class MultiSheetService {
 
   private getString(row: any[], index: number): string {
     return (row[index] || '').toString().trim();
+  }
+
+  private getPriceFromRow(row: any[], sheetData: any[][] | undefined): number {
+    if (!sheetData || sheetData.length === 0) {
+      // Fallback to checking common price column positions
+      return this.parseNumber(row[3]) || this.parseNumber(row[2]) || this.parseNumber(row[4]) || 0;
+    }
+    
+    // Find the "price" column from the header row
+    const headerRow = sheetData[0];
+    let priceColumnIndex = -1;
+    
+    for (let i = 0; i < headerRow.length; i++) {
+      const header = (headerRow[i] || '').toString().toLowerCase().trim();
+      if (header.includes('price') || header === 'amount' || header === 'cost' || header === 'total') {
+        priceColumnIndex = i;
+        break;
+      }
+    }
+    
+    if (priceColumnIndex >= 0 && priceColumnIndex < row.length) {
+      return this.parseNumber(row[priceColumnIndex]);
+    }
+    
+    // Fallback if no price column found
+    return this.parseNumber(row[3]) || this.parseNumber(row[2]) || this.parseNumber(row[4]) || 0;
   }
 
   private getDemoKPIData(dateRange?: DateRange): KPIData {
