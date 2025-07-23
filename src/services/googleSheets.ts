@@ -112,21 +112,30 @@ export class MultiSheetService {
           jobsRevenueSheetRowCount = filteredRows.length;
         }
         
-        // Store Sold Line Items sheet data separately for jetting jobs calculation
-        if (sheet.sheetId === '1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0') {
-          // Filter by date range if provided
-          soldLineItemsSheetData = dateRange ? 
-            data.slice(1).filter(row => {
-              const rowDate = parseDateFromRow(row, 0);
-              return rowDate && isDateInRange(rowDate, dateRange);
-            }) : 
-            data.slice(1);
-        }
-        
         allKPIData.push(kpiData);
       } catch (error) {
         console.warn(`Failed to fetch data from sheet ${sheet.name}:`, error);
         // Continue with other sheets even if one fails
+      }
+    }
+
+    // Fetch Sold Line Items sheet data separately for jetting jobs calculation
+    const soldLineItemsSheet = this.config.sheets.find(sheet => 
+      sheet.isActive && sheet.sheetId === '1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0'
+    );
+    
+    if (soldLineItemsSheet) {
+      try {
+        const soldLineItemsData = await this.fetchSheetData(soldLineItemsSheet);
+        // Filter by date range if provided
+        soldLineItemsSheetData = dateRange ? 
+          soldLineItemsData.slice(1).filter(row => {
+            const rowDate = parseDateFromRow(row, 0);
+            return rowDate && isDateInRange(rowDate, dateRange);
+          }) : 
+          soldLineItemsData.slice(1);
+      } catch (error) {
+        console.warn('Failed to fetch Sold Line Items sheet for jetting calculation:', error);
       }
     }
 
@@ -139,7 +148,7 @@ export class MultiSheetService {
     // Aggregate data from multiple sheets with special handling for install calls rate
     const aggregatedData = this.aggregateKPIData(allKPIData);
     
-    // Override install calls rate calculation using Jobs Revenue sheet specifically
+    // Override install calls rate and jetting jobs rate calculations using specific sheets
     if (jobsRevenueSheetData && jobsRevenueSheetRowCount > 0) {
       // Count install calls (≥$10k) from all sheets
       let totalInstallCalls = 0;
@@ -181,29 +190,29 @@ export class MultiSheetService {
       // Calculate install revenue per call using Jobs Revenue sheet row count as denominator
       aggregatedData.installRevenuePerCall = totalInstallRevenue / jobsRevenueSheetRowCount;
       
-      // Calculate jetting jobs rate using Sold Line Items sheet and Jobs Revenue sheet row count
-      if (soldLineItemsSheetData.length > 0) {
-        const jettingJobs = soldLineItemsSheetData.filter(row => {
-          const description = this.getString(row, 1).toLowerCase();
-          return description.includes('jetting') || description.includes('jet');
-        }).length;
-        
-        aggregatedData.jettingJobsPercentage = (jettingJobs / jobsRevenueSheetRowCount) * 100;
-        
-        console.log('Jetting Jobs Calculation (filtered):', {
-          jettingJobsFromSoldLineItems: jettingJobs,
-          jobsRevenueSheetRowCount,
-          jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
-          dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
-        });
-      }
-      
       console.log('Install Metrics Calculation (filtered):', {
         totalInstallCalls,
         totalInstallRevenue,
         jobsRevenueSheetRowCount,
         installCallsPercentage: aggregatedData.installCallsPercentage,
         installRevenuePerCall: aggregatedData.installRevenuePerCall,
+        dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
+      });
+    }
+    
+    // Calculate jetting jobs rate using Sold Line Items sheet and Jobs Revenue sheet row count
+    if (soldLineItemsSheetData.length > 0 && jobsRevenueSheetRowCount > 0) {
+      const jettingJobs = soldLineItemsSheetData.filter(row => {
+        const description = this.getString(row, 1).toLowerCase();
+        return description.includes('jetting') || description.includes('jet');
+      }).length;
+      
+      aggregatedData.jettingJobsPercentage = (jettingJobs / jobsRevenueSheetRowCount) * 100;
+      
+      console.log('Jetting Jobs Calculation (filtered):', {
+        jettingJobsFromSoldLineItems: jettingJobs,
+        jobsRevenueSheetRowCount,
+        jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
         dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
       });
     }
