@@ -207,12 +207,27 @@ export class MultiSheetService {
         return description.includes('jetting') || description.includes('jet');
       }).length;
       
+      // Calculate jetting revenue from Sold Line Items sheet
+      const jettingRevenue = soldLineItemsSheetData
+        .filter(row => {
+          const description = this.getString(row, 1).toLowerCase();
+          return description.includes('jetting') || description.includes('jet');
+        })
+        .reduce((sum, row) => {
+          // Assuming revenue/price is in column 3 or 4 of Sold Line Items sheet
+          const revenue = this.parseNumber(row[3]) || this.parseNumber(row[2]) || 0;
+          return sum + revenue;
+        }, 0);
+      
       aggregatedData.jettingJobsPercentage = (jettingJobs / jobsRevenueSheetRowCount) * 100;
+      aggregatedData.jettingRevenuePerCall = jettingRevenue / jobsRevenueSheetRowCount;
       
       console.log('Jetting Jobs Calculation (filtered):', {
         jettingJobsFromSoldLineItems: jettingJobs,
+        jettingRevenueFromSoldLineItems: jettingRevenue,
         jobsRevenueSheetRowCount,
         jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
+        jettingRevenuePerCall: aggregatedData.jettingRevenuePerCall,
         dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
       });
     }
