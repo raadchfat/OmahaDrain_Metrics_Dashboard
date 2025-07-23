@@ -3,11 +3,36 @@ import { DateRange, isDateInRange, parseDateFromRow } from '../utils/dateUtils';
 
 export class MultiSheetService {
   private config: MultiSheetConfig;
+  private sheetDataCache: Map<string, any[][]> = new Map();
 
   constructor(config: MultiSheetConfig) {
     this.config = config;
   }
 
+  async fetchAllActiveSheets(): Promise<void> {
+    const activeSheets = this.config.sheets.filter(sheet => sheet.isActive);
+    
+    // Clear existing cache
+    this.sheetDataCache.clear();
+    
+    // Fetch all active sheets concurrently
+    const fetchPromises = activeSheets.map(async (sheet) => {
+      try {
+        const data = await this.fetchSheetData(sheet);
+        this.sheetDataCache.set(sheet.sheetId, data);
+        return { sheetId: sheet.sheetId, success: true };
+      } catch (error) {
+        console.warn(`Failed to fetch data from sheet ${sheet.name}:`, error);
+        return { sheetId: sheet.sheetId, success: false, error };
+      }
+    });
+    
+    await Promise.all(fetchPromises);
+  }
+
+  private getCachedSheetData(sheetId: string): any[][] | null {
+    return this.sheetDataCache.get(sheetId) || null;
+  }
   async fetchSheetData(sheetConfig: GoogleSheetConfig): Promise<any[][]> {
     const apiKey = sheetConfig.apiKey || this.config.globalApiKey;
     
@@ -101,14 +126,14 @@ API Error: ${errorMessage}`);
     const allKPIData: KPIData[] = [];
     let soldLineItemsSheetData: any[][] = [];
     
-    // Cache to store fetched sheet data to avoid redundant API calls
-    const sheetDataCache = new Map<string, any[][]>();
 
     for (const sheet of kpiSheets) {
       try {
-        const data = await this.fetchSheetData(sheet);
-        // Store the fetched data in cache
-        sheetDataCache.set(sheet.sheetId, data);
+        const data = this.getCachedSheetData(sheet.sheetId);
+        if (!data) {
+          console.warn(`No cached data found for sheet ${sheet.name}, skipping`);
+          continue;
+        }
         
         const kpiData = this.processKPIData(data, sheet.name, dateRange);
         
@@ -126,7 +151,10 @@ API Error: ${errorMessage}`);
     
     if (soldLineItemsSheet) {
       try {
-        const soldLineItemsData = await this.fetchSheetData(soldLineItemsSheet);
+        const soldLineItemsData = this.getCachedSheetData(soldLineItemsSheet.sheetId);
+        if (!soldLineItemsData) {
+          console.warn('No cached data found for Sold Line Items sheet');
+        } else {
         // Filter by date range if provided - try different date column positions
         if (dateRange) {
           const dataRows = soldLineItemsData.slice(1);
@@ -146,6 +174,7 @@ API Error: ${errorMessage}`);
         }
         
         console.log(`Sold Line Items sheet processed: ${soldLineItemsSheetData.length} rows after filtering (using column B for dates)`);
+        }
       } catch (error) {
         console.warn('Failed to fetch Sold Line Items sheet for jetting calculation:', error);
       }
@@ -492,7 +521,11 @@ API Error: ${errorMessage}`);
 
     for (const sheet of timeSeriesSheets) {
       try {
-        const data = await this.fetchSheetData(sheet);
+        const data = this.getCachedSheetData(sheet.sheetId);
+        if (!data) {
+          console.warn(`No cached data found for sheet ${sheet.name}, skipping`);
+          continue;
+        }
         const timeSeriesData = this.processTimeSeriesData(data, sheet.name, dateRange);
         allTimeSeriesData.push(...timeSeriesData);
       } catch (error) {

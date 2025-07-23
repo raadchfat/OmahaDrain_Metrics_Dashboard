@@ -124,6 +124,10 @@ export const Dashboard: React.FC = () => {
         // Try to load data with saved configuration
         try {
           const multiSheetService = new MultiSheetService(config);
+          
+          // Fetch all active sheets once to populate cache
+          await multiSheetService.fetchAllActiveSheets();
+          
           const dateRange = getDateRangeFromTimeFrame(timeFrame);
           const [kpis, trends] = await Promise.all([
             multiSheetService.getAggregatedKPIData(dateRange),
