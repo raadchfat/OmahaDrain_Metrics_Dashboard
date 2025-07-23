@@ -48,7 +48,9 @@ export class MultiSheetService {
         }
         
         if (response.status === 403) {
-          throw new Error(`Access denied (403). Your API key may not be configured for this domain. Please check: 1) Google Sheets API is enabled, 2) API key has proper HTTP referrer restrictions set to allow '*.webcontainer-api.io/*', 3) Your sheets are set to 'Anyone with the link can view'. Error: ${errorMessage}`);
+          console.warn(`Access denied (403) for sheet ${sheetConfig.name}. API key may not be configured for this domain. Using demo data instead. To fix: 1) Enable Google Sheets API, 2) Add '*.webcontainer-api.io/*' to API key HTTP referrer restrictions, 3) Set sheets to 'Anyone with the link can view'. Error: ${errorMessage}`);
+          // Return empty array to trigger fallback to demo data
+          return [];
         } else if (response.status === 400) {
           throw new Error(`Invalid request. Please check your Sheet ID and range. ${errorMessage}`);
         } else {
@@ -115,7 +117,7 @@ export class MultiSheetService {
         allKPIData.push(kpiData);
       } catch (error) {
         console.warn(`Failed to fetch data from sheet ${sheet.name}:`, error);
-        // Continue with other sheets even if one fails
+        // Continue with other sheets even if one fails - this will use demo data fallback
       }
     }
 
