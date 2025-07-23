@@ -14,6 +14,7 @@ export const Dashboard: React.FC = () => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error' | 'no-config'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -127,6 +128,19 @@ export const Dashboard: React.FC = () => {
             multiSheetService.getAggregatedTimeSeriesData()
           ]);
           
+          // Add debug information
+          setDebugInfo({
+            sheetsConfigured: config.sheets.length,
+            activeSheets: config.sheets.filter(s => s.isActive).length,
+            dataLoadedAt: new Date().toISOString(),
+            kpiDataSource: 'Google Sheets',
+            sampleKpiValues: {
+              installCallsPercentage: kpis.installCallsPercentage,
+              installRevenuePerCall: kpis.installRevenuePerCall,
+              totalMembershipsRenewed: kpis.totalMembershipsRenewed
+            }
+          });
+          
           setKpiData(kpis);
           setTrendData(trends);
           setIsLoading(false);
@@ -142,6 +156,15 @@ export const Dashboard: React.FC = () => {
           setConnectionMessage(`Failed to load data from Google Sheets: ${errorMsg}. Displaying demo data instead. Please check your API configuration.`);
         }
       }
+      
+      // Set debug info for demo data
+      setDebugInfo({
+        sheetsConfigured: 0,
+        activeSheets: 0,
+        dataLoadedAt: new Date().toISOString(),
+        kpiDataSource: 'Demo Data',
+        note: 'Using fallback demo data'
+      });
       
       // Fallback to demo configuration
       config = {
@@ -415,6 +438,42 @@ export const Dashboard: React.FC = () => {
               {connectionMessage}
             </p>
           </div>
+        </div>
+      )}
+
+      {debugInfo && (
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+          <h3 className="font-medium text-gray-900 mb-2">Debug Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="font-medium text-gray-600">Data Source:</span>
+              <p className={debugInfo.kpiDataSource === 'Google Sheets' ? 'text-green-600' : 'text-orange-600'}>
+                {debugInfo.kpiDataSource}
+              </p>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Sheets Configured:</span>
+              <p className="text-gray-900">{debugInfo.sheetsConfigured}</p>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Active Sheets:</span>
+              <p className="text-gray-900">{debugInfo.activeSheets}</p>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Last Updated:</span>
+              <p className="text-gray-900">{new Date(debugInfo.dataLoadedAt).toLocaleTimeString()}</p>
+            </div>
+          </div>
+          {debugInfo.sampleKpiValues && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <span className="font-medium text-gray-600">Sample KPI Values:</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-1 text-xs">
+                <div>Install Calls: {debugInfo.sampleKpiValues.installCallsPercentage.toFixed(1)}%</div>
+                <div>Install Revenue: ${debugInfo.sampleKpiValues.installRevenuePerCall.toLocaleString()}</div>
+                <div>Memberships Renewed: {debugInfo.sampleKpiValues.totalMembershipsRenewed}</div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
