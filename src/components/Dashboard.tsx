@@ -104,8 +104,8 @@ export const Dashboard: React.FC = () => {
       title: 'Install Calls Rate',
       value: kpiData.installCallsPercentage,
       unit: '%',
-      description: '% of Install Calls ($5k+) / Drain Cleaning Calls',
-      formula: '(# of Install Calls ≥ $5k) ÷ (# of Drain Cleaning Calls) × 100',
+      description: '% of Install Calls ($10k+) / Drain Cleaning Calls',
+      formula: '(# of Install Calls ≥ $10k) ÷ (# of Drain Cleaning Calls) × 100',
       color: 'blue' as const,
       trend: 'up' as const,
       trendValue: 5.2
@@ -114,8 +114,8 @@ export const Dashboard: React.FC = () => {
       title: 'Install Revenue per Call',
       value: kpiData.installRevenuePerCall,
       unit: '$',
-      description: 'Install Revenue / # of Drain Cleaning Calls',
-      formula: '(Total Install Revenue) ÷ (# of Drain Cleaning Calls)',
+      description: 'Install Revenue ($10k+ jobs) / # of Drain Cleaning Calls',
+      formula: '(Sum of all jobs ≥ $10k) ÷ (# of Drain Cleaning Calls)',
       color: 'green' as const,
       trend: 'up' as const,
       trendValue: 12.8

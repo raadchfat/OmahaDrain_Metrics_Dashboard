@@ -110,17 +110,21 @@ export class MultiSheetService {
   private processKPIData(data: any[][], sheetName: string): KPIData {
     const rows = data.slice(1); // Skip header row
     const totalCalls = rows.length;
-    const installCalls = rows.filter(row => row[1] === 'Install' && parseFloat(row[2]) >= 5000).length;
+    const installCalls = rows.filter(row => parseFloat(row[2] || '0') >= 10000).length;
     const drainCleaningCalls = rows.filter(row => row[1] === 'Drain Cleaning').length;
     const jettingJobs = rows.filter(row => row[1] === 'Jetting').length;
     const descalingJobs = rows.filter(row => row[1] === 'Descaling').length;
     const callbackCalls = rows.filter(row => row[6] === 'Yes').length;
     const complaintCalls = rows.filter(row => row[7] === 'Yes').length;
     
+    // Calculate install revenue as sum of all jobs >= $10k
+    const installRevenue = rows
+      .filter(row => parseFloat(row[2] || '0') >= 10000)
+      .reduce((sum, row) => sum + parseFloat(row[2] || '0'), 0);
+    
     return {
       installCallsPercentage: drainCleaningCalls > 0 ? (installCalls / drainCleaningCalls) * 100 : 0,
-      installRevenuePerCall: drainCleaningCalls > 0 ? 
-        rows.filter(row => row[1] === 'Install').reduce((sum, row) => sum + parseFloat(row[2] || '0'), 0) / drainCleaningCalls : 0,
+      installRevenuePerCall: drainCleaningCalls > 0 ? installRevenue / drainCleaningCalls : 0,
       jettingJobsPercentage: drainCleaningCalls > 0 ? (jettingJobs / drainCleaningCalls) * 100 : 0,
       jettingRevenuePerCall: drainCleaningCalls > 0 ? 
         rows.filter(row => row[1] === 'Jetting').reduce((sum, row) => sum + parseFloat(row[2] || '0'), 0) / drainCleaningCalls : 0,
