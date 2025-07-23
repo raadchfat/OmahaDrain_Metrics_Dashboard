@@ -35,9 +35,25 @@ export function getDateRangeFromTimeFrame(timeFrame: TimeFrame): DateRange {
         end: new Date(weekEnd.getTime() + 24 * 60 * 60 * 1000 - 1) // End of Sunday
       };
       
+    case 'lastweek':
+      // Find last Monday-Sunday work week
+      const lastWeekCurrentDay = today.getDay();
+      const daysFromLastMonday = lastWeekCurrentDay === 0 ? 13 : lastWeekCurrentDay + 6; // If Sunday, go back 13 days; otherwise go back to previous Monday
+      const lastWeekStart = new Date(today);
+      lastWeekStart.setDate(lastWeekStart.getDate() - daysFromLastMonday);
+      
+      // End of last work week is Sunday
+      const lastWeekEnd = new Date(lastWeekStart);
+      lastWeekEnd.setDate(lastWeekEnd.getDate() + 6); // Sunday is 6 days after Monday
+      
+      return {
+        start: lastWeekStart,
+        end: new Date(lastWeekEnd.getTime() + 24 * 60 * 60 * 1000 - 1) // End of Sunday
+      };
+      
     case 'month':
-      const monthStart = new Date(today);
-      monthStart.setDate(monthStart.getDate() - 30);
+      // Current month from 1st to today
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       return {
         start: monthStart,
         end: today
