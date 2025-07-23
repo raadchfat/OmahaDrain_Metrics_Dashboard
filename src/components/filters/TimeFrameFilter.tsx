@@ -10,7 +10,7 @@ interface TimeFrameFilterProps {
 const timeFrameOptions = [
   { value: 'today' as TimeFrame, label: 'Today' },
   { value: 'yesterday' as TimeFrame, label: 'Yesterday' },
-  { value: 'week' as TimeFrame, label: 'Last Week' },
+  { value: 'week' as TimeFrame, label: 'This Week (Mon-Sun)' },
   { value: 'month' as TimeFrame, label: 'Last Month' },
   { value: 'quarter' as TimeFrame, label: 'Last Quarter' },
   { value: 'year' as TimeFrame, label: 'Last Year' },

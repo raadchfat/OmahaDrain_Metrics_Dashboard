@@ -20,11 +20,19 @@ export function getDateRangeFromTimeFrame(timeFrame: TimeFrame): DateRange {
       };
       
     case 'week':
+      // Find the most recent Monday (start of work week)
+      const currentDayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+      const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; // If Sunday, go back 6 days to Monday
       const weekStart = new Date(today);
-      weekStart.setDate(weekStart.getDate() - 7);
+      weekStart.setDate(weekStart.getDate() - daysFromMonday);
+      
+      // End of work week is Sunday
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6); // Sunday is 6 days after Monday
+      
       return {
         start: weekStart,
-        end: today
+        end: new Date(weekEnd.getTime() + 24 * 60 * 60 * 1000 - 1) // End of Sunday
       };
       
     case 'month':
