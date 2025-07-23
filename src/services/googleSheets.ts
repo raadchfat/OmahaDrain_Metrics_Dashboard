@@ -87,10 +87,16 @@ export class MultiSheetService {
     let jobsRevenueSheetData: KPIData | null = null;
     let jobsRevenueSheetRowCount = 0;
     let soldLineItemsSheetData: any[][] = [];
+    
+    // Cache to store fetched sheet data to avoid redundant API calls
+    const sheetDataCache = new Map<string, any[][]>();
 
     for (const sheet of kpiSheets) {
       try {
         const data = await this.fetchSheetData(sheet);
+        // Store the fetched data in cache
+        sheetDataCache.set(sheet.sheetId, data);
+        
         const kpiData = this.processKPIData(data, sheet.name, dateRange);
         
         // Store Jobs Revenue sheet data separately for install calls calculation
@@ -140,7 +146,13 @@ export class MultiSheetService {
       let totalInstallRevenue = 0;
       for (const sheet of kpiSheets) {
         try {
-          const data = await this.fetchSheetData(sheet);
+          // Use cached data instead of making another API call
+          const data = sheetDataCache.get(sheet.sheetId);
+          if (!data) {
+            console.warn(`No cached data found for sheet ${sheet.name}`);
+            continue;
+          }
+          
           // Filter rows by date range if provided
           const rows = dateRange ? 
             data.slice(1).filter(row => {
