@@ -100,6 +100,9 @@ export const Dashboard: React.FC = () => {
   };
   const loadData = async () => {
     setIsLoading(true);
+    setConnectionStatus('idle');
+    setConnectionMessage('');
+    
     try {
       // Load configuration from localStorage
       const savedConfig = localStorage.getItem('multiSheetConfig');
@@ -119,9 +122,16 @@ export const Dashboard: React.FC = () => {
           setKpiData(kpis);
           setTrendData(trends);
           setIsLoading(false);
+          setConnectionStatus('success');
+          setConnectionMessage('Successfully loaded data from Google Sheets!');
           return;
         } catch (savedConfigError) {
           console.warn('Failed to load data with saved configuration, falling back to demo data:', savedConfigError);
+          
+          // Set error status to show in UI
+          setConnectionStatus('error');
+          const errorMsg = savedConfigError instanceof Error ? savedConfigError.message : 'Unknown error';
+          setConnectionMessage(`Failed to load data from Google Sheets: ${errorMsg}. Displaying demo data instead. Please check your API configuration.`);
         }
       }
       
@@ -150,6 +160,12 @@ export const Dashboard: React.FC = () => {
       setTrendData(trends);
     } catch (error) {
       console.error('Error loading data:', error);
+      
+      // Set error status for complete failure
+      setConnectionStatus('error');
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setConnectionMessage(`Unable to load any data: ${errorMsg}. Using fallback demo data.`);
+      
       // Set fallback data to prevent complete failure
       setKpiData({
         installCallsPercentage: 0,
