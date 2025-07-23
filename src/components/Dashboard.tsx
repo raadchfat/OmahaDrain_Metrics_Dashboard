@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { TestTube, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { KPICard } from './charts/KPICard';
 import { TrendChart } from './charts/TrendChart';
 import { TimeFrameFilter } from './filters/TimeFrameFilter';
@@ -10,11 +11,80 @@ export const Dashboard: React.FC = () => {
   const [trendData, setTrendData] = useState<TimeSeriesData[]>([]);
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('today');
   const [isLoading, setIsLoading] = useState(true);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error' | 'no-config'>('idle');
+  const [connectionMessage, setConnectionMessage] = useState('');
 
   useEffect(() => {
     loadData();
   }, [timeFrame]);
 
+  const testGoogleSheetsConnection = async () => {
+    setIsTestingConnection(true);
+    setConnectionStatus('idle');
+    setConnectionMessage('');
+
+    try {
+      // Load configuration from localStorage
+      const savedConfig = localStorage.getItem('multiSheetConfig');
+      
+      if (!savedConfig) {
+        setConnectionStatus('no-config');
+        setConnectionMessage('No Google Sheets configuration found. Please configure your sheets in Settings.');
+        setIsTestingConnection(false);
+        return;
+      }
+
+      const config: MultiSheetConfig = JSON.parse(savedConfig);
+      
+      if (!config.globalApiKey && !config.sheets.some(sheet => sheet.apiKey)) {
+        setConnectionStatus('no-config');
+        setConnectionMessage('No API key configured. Please add your Google Sheets API key in Settings.');
+        setIsTestingConnection(false);
+        return;
+      }
+
+      if (config.sheets.length === 0) {
+        setConnectionStatus('no-config');
+        setConnectionMessage('No sheets configured. Please add at least one Google Sheet in Settings.');
+        setIsTestingConnection(false);
+        return;
+      }
+
+      const multiSheetService = new MultiSheetService(config);
+      
+      // Test connection by trying to fetch data
+      const activeSheets = config.sheets.filter(sheet => sheet.isActive);
+      let successCount = 0;
+      let errorMessages: string[] = [];
+
+      for (const sheet of activeSheets) {
+        try {
+          await multiSheetService.testSheetConnection(sheet);
+          successCount++;
+        } catch (error) {
+          errorMessages.push(`${sheet.name}: ${error instanceof Error ? error.message : 'Connection failed'}`);
+        }
+      }
+
+      if (successCount === activeSheets.length) {
+        setConnectionStatus('success');
+        setConnectionMessage(`Successfully connected to all ${successCount} active sheet(s)!`);
+      } else if (successCount > 0) {
+        setConnectionStatus('error');
+        setConnectionMessage(`Connected to ${successCount}/${activeSheets.length} sheets. Errors: ${errorMessages.join(', ')}`);
+      } else {
+        setConnectionStatus('error');
+        setConnectionMessage(`Failed to connect to any sheets. Errors: ${errorMessages.join(', ')}`);
+      }
+
+    } catch (error) {
+      setConnectionStatus('error');
+      setConnectionMessage(`Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    setIsTestingConnection(false);
+  };
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -268,8 +338,48 @@ export const Dashboard: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">KPI Dashboard</h1>
           <p className="text-gray-600">Monitor your business performance metrics</p>
         </div>
-        <TimeFrameFilter selected={timeFrame} onSelect={setTimeFrame} />
+        <div className="flex items-center gap-4">
+          <button
+            onClick={testGoogleSheetsConnection}
+            disabled={isTestingConnection}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <TestTube className={`w-4 h-4 ${isTestingConnection ? 'animate-pulse' : ''}`} />
+            {isTestingConnection ? 'Testing...' : 'Test Connection'}
+          </button>
+          <TimeFrameFilter selected={timeFrame} onSelect={setTimeFrame} />
+        </div>
       </div>
+
+      {connectionStatus !== 'idle' && (
+        <div className={`p-4 rounded-lg border flex items-start gap-3 ${
+          connectionStatus === 'success' ? 'bg-green-50 border-green-200' :
+          connectionStatus === 'error' ? 'bg-red-50 border-red-200' :
+          'bg-yellow-50 border-yellow-200'
+        }`}>
+          {connectionStatus === 'success' && <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />}
+          {connectionStatus === 'error' && <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />}
+          {connectionStatus === 'no-config' && <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />}
+          <div>
+            <h3 className={`font-medium ${
+              connectionStatus === 'success' ? 'text-green-800' :
+              connectionStatus === 'error' ? 'text-red-800' :
+              'text-yellow-800'
+            }`}>
+              {connectionStatus === 'success' ? 'Connection Successful' :
+               connectionStatus === 'error' ? 'Connection Issues' :
+               'Configuration Required'}
+            </h3>
+            <p className={`text-sm mt-1 ${
+              connectionStatus === 'success' ? 'text-green-700' :
+              connectionStatus === 'error' ? 'text-red-700' :
+              'text-yellow-700'
+            }`}>
+              {connectionMessage}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {kpiCards.map((card, index) => (
