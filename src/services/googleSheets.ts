@@ -813,13 +813,6 @@ API Error: ${errorMessage}`);
     return rows.length > 0 ? (reviewCount / rows.length) * 100 : 0;
   }
 
-  private getDemoKPIDataForSheet(sheetName: string): KPIData {
-    // Return demo data specific to the sheet type
-    const baseData = this.getDemoKPIData();
-    console.log(`${sheetName}: Returning demo KPI data`);
-    return baseData;
-  }
-
   private processTimeSeriesData(data: any[][], sheetName: string, dateRange?: DateRange): TimeSeriesData[] {
     if (!data || data.length < 2) {
       return [];
@@ -964,6 +957,10 @@ API Error: ${errorMessage}`);
     if (daysDiff <= 30) return 0.9; // Month
     if (daysDiff <= 90) return 1.1; // Quarter
     return 1.2; // Year - higher accumulated values
+  }
+
+  private getDemoKPIDataForSheet(sheetName: string): KPIData {
+    return this.getDemoKPIData();
   }
 }
 
