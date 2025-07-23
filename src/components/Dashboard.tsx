@@ -19,6 +19,14 @@ export const Dashboard: React.FC = () => {
     loadData();
   }, [timeFrame]);
 
+  // Force a retry by reloading data
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadData();
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const testGoogleSheetsConnection = async () => {
     setIsTestingConnection(true);
     setConnectionStatus('idle');
