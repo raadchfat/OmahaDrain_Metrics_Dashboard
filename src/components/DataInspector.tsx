@@ -102,12 +102,29 @@ export const DataInspector: React.FC = () => {
       
       console.log(`Analyzing sheet: ${sheet.name}`);
       
-      // Fetch raw data
-      const rawData = await multiSheetService.fetchSheetData(sheet);
+      // Test connection first
+      const isConnected = await multiSheetService.testSheetConnection(sheet);
+      if (!isConnected) {
+        throw new Error('Cannot connect to sheet - check API key and sheet ID');
+      }
+      
+      // Fetch raw data with timeout
+      const rawData = await Promise.race([
+        multiSheetService.fetchSheetData(sheet),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout - sheet may be too large or API key invalid')), 15000)
+        )
+      ]) as any[][];
       
       if (rawData.length === 0) {
         throw new Error('No data found in sheet');
       }
+      
+      console.log(`Raw data fetched for ${sheet.name}:`, {
+        totalRows: rawData.length,
+        firstRowColumns: rawData[0]?.length || 0,
+        sampleFirstRow: rawData[0]?.slice(0, 5)
+      });
       
       const headers = rawData[0] || [];
       const dataRows = rawData.slice(1);
@@ -141,8 +158,18 @@ export const DataInspector: React.FC = () => {
       
     } catch (error) {
       console.error(`Error analyzing sheet ${sheetIndex}:`, error);
-      updatedAnalyses[sheetIndex].error = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      updatedAnalyses[sheetIndex].error = errorMessage;
       updatedAnalyses[sheetIndex].isLoading = false;
+      
+      // Show more helpful error messages
+      if (errorMessage.includes('timeout')) {
+        updatedAnalyses[sheetIndex].error = 'Request timeout. The sheet may be very large or there may be API connectivity issues. Try again or check your API configuration.';
+      } else if (errorMessage.includes('API key')) {
+        updatedAnalyses[sheetIndex].error = 'API key issue. Make sure your Google Sheets API key is valid and has proper permissions.';
+      } else if (errorMessage.includes('sheet ID')) {
+        updatedAnalyses[sheetIndex].error = 'Sheet ID issue. Verify the Google Sheet ID is correct and the sheet is accessible.';
+      }
     }
     
     setAnalyses(updatedAnalyses);
@@ -151,10 +178,27 @@ export const DataInspector: React.FC = () => {
   const analyzeAllSheets = async () => {
     setIsAnalyzing(true);
     
-    for (let i = 0; i < analyses.length; i++) {
-      if (config?.sheets[i]?.isActive) {
-        await analyzeSheet(i);
+    try {
+      const activeSheetIndices = analyses
+        .map((_, index) => index)
+        .filter(index => config?.sheets[index]?.isActive);
+      
+      console.log(`Starting analysis of ${activeSheetIndices.length} active sheets`);
+      
+      // Analyze sheets one by one to avoid overwhelming the API
+      for (const sheetIndex of activeSheetIndices) {
+        console.log(`Analyzing sheet ${sheetIndex + 1} of ${activeSheetIndices.length}`);
+        await analyzeSheet(sheetIndex);
+        
+        // Small delay between requests to be nice to the API
+        if (sheetIndex < activeSheetIndices.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
+      
+      console.log('All sheet analysis completed');
+    } catch (error) {
+      console.error('Error in analyzeAllSheets:', error);
     }
     
     setIsAnalyzing(false);
