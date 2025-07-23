@@ -334,6 +334,7 @@ export const Settings: React.FC = () => {
           <li>Set up your global API key in the Google Developer Console</li>
           <li>Add multiple sheets for different data sources (KPI data, time series, raw data)</li>
           <li>Configure each sheet with its specific Sheet ID and data range</li>
+          <li><strong>Range Examples:</strong> A1:Z10000 (10k rows), A1:AA50000 (50k rows), or A:Z (entire columns)</li>
           <li>Use different data types to organize your information:
             <ul className="ml-6 mt-1 list-disc">
               <li><strong>KPI Data:</strong> For calculated metrics and performance indicators</li>
