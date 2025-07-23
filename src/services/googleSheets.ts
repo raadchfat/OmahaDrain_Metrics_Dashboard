@@ -226,17 +226,28 @@ export class MultiSheetService {
           return description.includes('jetting') || description.includes('jet');
         })
         .reduce((sum, row) => {
-          // Find the price column from the header row
           const revenue = this.getPriceFromRow(row, sheetDataCache.get('1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0'));
           return sum + revenue;
         }, 0);
       
+      // Get unique job numbers from Sold Line Items sheet (assuming job # is in column A or first column)
+      const uniqueJobNumbers = new Set();
+      soldLineItemsSheetData.forEach(row => {
+        const jobNumber = this.getString(row, 0); // Column A for job #
+        if (jobNumber && jobNumber.trim() !== '') {
+          uniqueJobNumbers.add(jobNumber.trim());
+        }
+      });
+      const uniqueJobCount = uniqueJobNumbers.size;
+      
       aggregatedData.jettingJobsPercentage = (jettingJobs / jobsRevenueSheetRowCount) * 100;
-      aggregatedData.jettingRevenuePerCall = jettingRevenue / jobsRevenueSheetRowCount;
+      aggregatedData.jettingRevenuePerCall = uniqueJobCount > 0 ? jettingRevenue / uniqueJobCount : 0;
       
       console.log('Jetting Jobs Calculation (filtered):', {
         jettingJobsFromSoldLineItems: jettingJobs,
         jettingRevenueFromSoldLineItems: jettingRevenue,
+        uniqueJobNumbers: Array.from(uniqueJobNumbers).slice(0, 10), // Show first 10 unique job numbers
+        uniqueJobCount: uniqueJobCount,
         jettingJobsDetails: soldLineItemsSheetData
           .filter(row => {
             const description = this.getString(row, 1).toLowerCase();
@@ -247,7 +258,6 @@ export class MultiSheetService {
             priceValue: this.getPriceFromRow(row, sheetDataCache.get('1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0')),
             fullRow: row.slice(0, 5) // Show first 5 columns for context
           })),
-        jobsRevenueSheetRowCount,
         jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
         jettingRevenuePerCall: aggregatedData.jettingRevenuePerCall,
         dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
