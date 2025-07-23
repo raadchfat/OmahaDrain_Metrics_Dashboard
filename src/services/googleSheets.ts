@@ -99,8 +99,6 @@ API Error: ${errorMessage}`);
     }
 
     const allKPIData: KPIData[] = [];
-    let jobsRevenueSheetData: KPIData | null = null;
-    let jobsRevenueSheetRowCount = 0;
     let soldLineItemsSheetData: any[][] = [];
     
     // Cache to store fetched sheet data to avoid redundant API calls
@@ -114,19 +112,6 @@ API Error: ${errorMessage}`);
         
         const kpiData = this.processKPIData(data, sheet.name, dateRange);
         
-        // Store Jobs Revenue sheet data separately for install calls calculation
-        if (sheet.sheetId === '1p_CdgHRpR44Rl9KdUuXPTWmqAoPss251gXtS_ZjyoYQ') {
-          jobsRevenueSheetData = kpiData;
-          // Filter rows by date range if provided
-          const filteredRows = dateRange ? 
-            data.slice(1).filter(row => {
-              const rowDate = parseDateFromRow(row, 0); // Assuming date is in first column
-              return rowDate && isDateInRange(rowDate, dateRange);
-            }) : 
-            data.slice(1);
-          jobsRevenueSheetRowCount = filteredRows.length;
-        }
-        
         allKPIData.push(kpiData);
       } catch (error) {
         console.warn(`Failed to fetch data from sheet ${sheet.name}:`, error);
@@ -135,7 +120,7 @@ API Error: ${errorMessage}`);
     }
 
     // Fetch Sold Line Items sheet data separately for jetting jobs calculation
-    const soldLineItemsSheet = this.config.sheets.find(sheet => 
+    const soldLineItemsSheet = this.config.sheets.find(sheet =>
       sheet.isActive && sheet.sheetId === '1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0'
     );
     
@@ -175,60 +160,17 @@ API Error: ${errorMessage}`);
     // Aggregate data from multiple sheets with special handling for install calls rate
     const aggregatedData = this.aggregateKPIData(allKPIData);
     
-    // Override install calls rate and jetting jobs rate calculations using specific sheets
-    if (jobsRevenueSheetData && jobsRevenueSheetRowCount > 0) {
-      // Count install calls (≥$10k) from all sheets
-      let totalInstallCalls = 0;
-      let totalInstallRevenue = 0;
-      for (const sheet of kpiSheets) {
-        try {
-          // Use cached data instead of making another API call
-          const data = sheetDataCache.get(sheet.sheetId);
-          if (!data) {
-            console.warn(`No cached data found for sheet ${sheet.name}`);
-            continue;
-          }
-          
-          // Filter rows by date range if provided
-          const rows = dateRange ? 
-            data.slice(1).filter(row => {
-              const rowDate = parseDateFromRow(row, 0);
-              return rowDate && isDateInRange(rowDate, dateRange);
-            }) : 
-            data.slice(1);
-            
-          const installCallsInSheet = rows.filter(row => {
-            const revenue = this.parseNumber(row[24]); // Column Y
-            return revenue >= 10000;
-          }).length;
-          const installRevenueInSheet = rows
-            .filter(row => this.parseNumber(row[24]) >= 10000)
-            .reduce((sum, row) => sum + this.parseNumber(row[24]), 0);
-          totalInstallCalls += installCallsInSheet;
-          totalInstallRevenue += installRevenueInSheet;
-        } catch (error) {
-          console.warn(`Failed to recount install calls from sheet:`, error);
-        }
-      }
+    // Calculate Install Calls Rate using the guide methodology
+    if (soldLineItemsSheetData.length > 0) {
+      const installMetrics = this.calculateInstallCallsRateFromGuide(soldLineItemsSheetData, dateRange);
+      aggregatedData.installCallsPercentage = installMetrics.installCallsPercentage;
+      aggregatedData.installRevenuePerCall = installMetrics.installRevenuePerCall;
       
-      // Calculate install calls rate using Jobs Revenue sheet row count as denominator
-      aggregatedData.installCallsPercentage = (totalInstallCalls / jobsRevenueSheetRowCount) * 100;
-      
-      // Calculate install revenue per call using Jobs Revenue sheet row count as denominator
-      aggregatedData.installRevenuePerCall = totalInstallRevenue / jobsRevenueSheetRowCount;
-      
-      console.log('Install Metrics Calculation (filtered):', {
-        totalInstallCalls,
-        totalInstallRevenue,
-        jobsRevenueSheetRowCount,
-        installCallsPercentage: aggregatedData.installCallsPercentage,
-        installRevenuePerCall: aggregatedData.installRevenuePerCall,
-        dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
-      });
+      console.log('Install Calls Rate (Guide Method):', installMetrics);
     }
     
-    // Calculate jetting jobs rate using Sold Line Items sheet and Jobs Revenue sheet row count
-    if (soldLineItemsSheetData.length > 0 && jobsRevenueSheetRowCount > 0) {
+    // Calculate jetting jobs rate using Sold Line Items sheet
+    if (soldLineItemsSheetData.length > 0) {
       // Excel formula: =SUMIF('Sold Line Items'!R:R,"*Jetting*",'Sold Line Items'!Y:Y)/(COUNTA('Jobs Revenue'!A:A)-1)
       
       // SUMIF('Sold Line Items'!R:R,"*Jetting*",'Sold Line Items'!Y:Y) - Sum revenue where description contains "Jetting"
@@ -242,11 +184,11 @@ API Error: ${errorMessage}`);
           return sum + revenue;
         }, 0);
       
-      // (COUNTA('Jobs Revenue'!A:A)-1) - Count of rows in Jobs Revenue sheet minus header
-      const jobsRevenueRowCount = jobsRevenueSheetRowCount; // Already filtered by date range
+      // Get unique jobs count for denominator
+      const uniqueJobs = this.getUniqueJobsInDateRange(soldLineItemsSheetData, dateRange);
       
-      // Calculate jetting revenue per call using Jobs Revenue sheet row count as denominator
-      aggregatedData.jettingRevenuePerCall = jobsRevenueRowCount > 0 ? jettingRevenue / jobsRevenueRowCount : 0;
+      // Calculate jetting revenue per call using unique jobs count as denominator
+      aggregatedData.jettingRevenuePerCall = uniqueJobs.length > 0 ? jettingRevenue / uniqueJobs.length : 0;
       
       // For jetting jobs percentage, we can calculate based on jetting line items vs total calls
       const jettingJobNumbers = new Set<string>();
@@ -257,12 +199,12 @@ API Error: ${errorMessage}`);
           jettingJobNumbers.add(jobNumber.trim());
         }
       });
-      aggregatedData.jettingJobsPercentage = (jettingJobNumbers.size / jobsRevenueRowCount) * 100;
+      aggregatedData.jettingJobsPercentage = uniqueJobs.length > 0 ? (jettingJobNumbers.size / uniqueJobs.length) * 100 : 0;
       
       console.log('Excel SUMIF Jetting Calculation:', {
         formula: "=SUMIF('Sold Line Items'!R:R,\"*Jetting*\",'Sold Line Items'!Y:Y)/(COUNTA('Jobs Revenue'!A:A)-1)",
         sumifResult: jettingRevenue, // SUMIF('Sold Line Items'!R:R,"*Jetting*",'Sold Line Items'!Y:Y)
-        countaResult: jobsRevenueRowCount, // (COUNTA('Jobs Revenue'!A:A)-1)
+        countaResult: uniqueJobs.length, // Unique jobs count
         uniqueJettingJobs: Array.from(jettingJobNumbers).slice(0, 10),
         jettingRevenuePerJob: aggregatedData.jettingRevenuePerCall,
         jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
@@ -271,6 +213,102 @@ API Error: ${errorMessage}`);
     }
     
     return aggregatedData;
+  }
+
+  /**
+   * Calculate Install Calls Rate following the guide methodology:
+   * Step 1: Get unique jobs in date range
+   * Step 2: Calculate total revenue per job
+   * Step 3: Flag install jobs (≥$10k)
+   * Step 4: Calculate percentage
+   */
+  private calculateInstallCallsRateFromGuide(soldLineItemsData: any[][], dateRange?: DateRange): {
+    installCallsPercentage: number;
+    installRevenuePerCall: number;
+    uniqueJobsCount: number;
+    installJobsCount: number;
+    totalInstallRevenue: number;
+  } {
+    // Step 1: Get unique jobs in date range
+    const uniqueJobs = this.getUniqueJobsInDateRange(soldLineItemsData, dateRange);
+    
+    if (uniqueJobs.length === 0) {
+      return {
+        installCallsPercentage: 0,
+        installRevenuePerCall: 0,
+        uniqueJobsCount: 0,
+        installJobsCount: 0,
+        totalInstallRevenue: 0
+      };
+    }
+    
+    // Step 2: Calculate total revenue per job
+    const jobRevenueMap = new Map<string, number>();
+    
+    for (const job of uniqueJobs) {
+      // Sum all line items for this job
+      const totalRevenue = soldLineItemsData
+        .filter(row => {
+          const rowJob = this.getString(row, 13); // Column N (Job)
+          const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+          
+          // Check if job matches and date is in range (if specified)
+          const jobMatches = rowJob.trim() === job.trim();
+          const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
+          
+          return jobMatches && dateInRange;
+        })
+        .reduce((sum, row) => {
+          const price = this.parseNumber(row[19]); // Column T (Price)
+          return sum + price;
+        }, 0);
+      
+      jobRevenueMap.set(job, totalRevenue);
+    }
+    
+    // Step 3: Flag install jobs (≥$10k)
+    let installJobsCount = 0;
+    let totalInstallRevenue = 0;
+    
+    for (const [job, revenue] of jobRevenueMap) {
+      if (revenue >= 10000) {
+        installJobsCount++;
+        totalInstallRevenue += revenue;
+      }
+    }
+    
+    // Step 4: Calculate the KPI
+    const installCallsPercentage = uniqueJobs.length > 0 ? (installJobsCount / uniqueJobs.length) * 100 : 0;
+    const installRevenuePerCall = uniqueJobs.length > 0 ? totalInstallRevenue / uniqueJobs.length : 0;
+    
+    return {
+      installCallsPercentage,
+      installRevenuePerCall,
+      uniqueJobsCount: uniqueJobs.length,
+      installJobsCount,
+      totalInstallRevenue
+    };
+  }
+
+  /**
+   * Get unique jobs in the specified date range
+   */
+  private getUniqueJobsInDateRange(soldLineItemsData: any[][], dateRange?: DateRange): string[] {
+    const uniqueJobs = new Set<string>();
+    
+    soldLineItemsData.forEach(row => {
+      const job = this.getString(row, 13); // Column N (Job)
+      const invoiceDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+      
+      // Only include jobs within the date range (if specified)
+      if (job && job.trim() !== '') {
+        if (!dateRange || (invoiceDate && isDateInRange(invoiceDate, dateRange))) {
+          uniqueJobs.add(job.trim());
+        }
+      }
+    });
+    
+    return Array.from(uniqueJobs);
   }
 
   async getAggregatedTimeSeriesData(dateRange?: DateRange): Promise<TimeSeriesData[]> {
