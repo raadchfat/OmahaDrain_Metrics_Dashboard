@@ -214,47 +214,50 @@ export class MultiSheetService {
     
     // Calculate jetting jobs rate using Sold Line Items sheet and Jobs Revenue sheet row count
     if (soldLineItemsSheetData.length > 0 && jobsRevenueSheetRowCount > 0) {
-      // Filter sold line items by "jetting" (like Excel filter)
-      const jettingLineItems = soldLineItemsSheetData.filter(row => {
-        const description = this.getString(row, 1).toLowerCase();
-        return description.includes('jetting') || description.includes('jet');
-      }).length;
+      // Excel formula: =SUMIF(R:R,"*Jetting*",Y:Y)/SUMPRODUCT((ISNUMBER(SEARCH("Jetting",R:R)))/COUNTIFS(N:N,N:N&"",R:R,"*Jetting*"))
       
-      // Calculate jetting revenue from filtered jetting line items
-      const jettingRevenue = jettingLineItems
+      // SUMIF(R:R,"*Jetting*",Y:Y) - Sum revenue where description contains "Jetting"
+      const jettingRevenue = soldLineItemsSheetData
+        .filter(row => {
+          const description = this.getString(row, 17).toLowerCase(); // Column R (18th column, 0-indexed = 17)
+          return description.includes('jetting');
+        })
         .reduce((sum, row) => {
-          const revenue = this.getPriceFromRow(row, sheetDataCache.get('1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0'));
+          const revenue = this.parseNumber(row[24]); // Column Y (25th column, 0-indexed = 24)
           return sum + revenue;
         }, 0);
       
-      // Get unique job numbers from the filtered jetting line items (column N)
-      const uniqueJobNumbers = new Set();
-      jettingLineItems.forEach(row => {
-        const jobNumber = this.getString(row, 13); // Column N for job # (N = 14th column, 0-indexed = 13)
-        if (jobNumber && jobNumber.trim() !== '') {
-          uniqueJobNumbers.add(jobNumber.trim());
+      // SUMPRODUCT((ISNUMBER(SEARCH("Jetting",R:R)))/COUNTIFS(N:N,N:N&"",R:R,"*Jetting*"))
+      // This counts unique job numbers (column N) where description (column R) contains "Jetting"
+      const jettingJobNumbers = new Map<string, number>();
+      
+      soldLineItemsSheetData.forEach(row => {
+        const description = this.getString(row, 1).toLowerCase();
+        const descriptionR = this.getString(row, 17).toLowerCase(); // Column R
+        const jobNumber = this.getString(row, 13); // Column N
+        
+        // Check if description in column R contains "jetting"
+        if (descriptionR.includes('jetting') && jobNumber && jobNumber.trim() !== '') {
+          const jobKey = jobNumber.trim();
+          jettingJobNumbers.set(jobKey, (jettingJobNumbers.get(jobKey) || 0) + 1);
         }
       });
-      const uniqueJobCount = uniqueJobNumbers.size;
       
-      aggregatedData.jettingJobsPercentage = (jettingJobs / jobsRevenueSheetRowCount) * 100;
-      // Excel-style calculation: Total jetting revenue ÷ Count of unique job IDs from jetting items
-      aggregatedData.jettingRevenuePerCall = uniqueJobCount > 0 ? jettingRevenue / uniqueJobCount : 0;
+      const uniqueJettingJobCount = jettingJobNumbers.size;
       
-      console.log('Jetting Jobs Calculation (filtered):', {
-        jettingLineItemsCount: jettingLineItems.length,
-        jettingRevenueFromSoldLineItems: jettingRevenue,
-        uniqueJobNumbersFromJettingItems: Array.from(uniqueJobNumbers).slice(0, 10), // Show first 10 unique job numbers from jetting items only
-        uniqueJobCount: uniqueJobCount,
-        jettingItemsDetails: jettingLineItems
-          .map(row => ({
-            description: this.getString(row, 1),
-            jobNumber: this.getString(row, 13),
-            priceValue: this.getPriceFromRow(row, sheetDataCache.get('1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0')),
-            fullRow: row.slice(0, 5) // Show first 5 columns for context
-          })),
-        calculationFormula: 'Total Jetting Revenue ÷ Count of Unique Job IDs (from jetting items only)',
+      // Calculate jetting revenue per call using Jobs Revenue sheet row count as denominator
+      aggregatedData.jettingJobsPercentage = (uniqueJettingJobCount / jobsRevenueSheetRowCount) * 100;
+      
+      // Excel formula result: SUMIF result ÷ SUMPRODUCT result
+      aggregatedData.jettingRevenuePerCall = uniqueJettingJobCount > 0 ? jettingRevenue / uniqueJettingJobCount : 0;
+      
+      console.log('Excel SUMIF/SUMPRODUCT Jetting Calculation:', {
+        formula: '=SUMIF(R:R,"*Jetting*",Y:Y)/SUMPRODUCT((ISNUMBER(SEARCH("Jetting",R:R)))/COUNTIFS(N:N,N:N&"",R:R,"*Jetting*"))',
+        sumifResult: jettingRevenue, // SUMIF(R:R,"*Jetting*",Y:Y)
+        sumproductResult: uniqueJettingJobCount, // Count of unique job numbers where R contains "Jetting"
+        uniqueJettingJobs: Array.from(jettingJobNumbers.keys()).slice(0, 10),
         jettingRevenuePerJob: aggregatedData.jettingRevenuePerCall,
+        jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
         dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
       });
     }
