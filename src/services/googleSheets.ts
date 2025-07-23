@@ -117,6 +117,7 @@ export class MultiSheetService {
     if (jobsRevenueSheetData && jobsRevenueSheetRowCount > 0) {
       // Count install calls (≥$10k) from all sheets
       let totalInstallCalls = 0;
+      let totalInstallRevenue = 0;
       for (const sheet of kpiSheets) {
         try {
           const data = await this.fetchSheetData(sheet);
@@ -125,7 +126,11 @@ export class MultiSheetService {
             const revenue = this.parseNumber(row[24]); // Column Y
             return revenue >= 10000;
           }).length;
+          const installRevenueInSheet = rows
+            .filter(row => this.parseNumber(row[24]) >= 10000)
+            .reduce((sum, row) => sum + this.parseNumber(row[24]), 0);
           totalInstallCalls += installCallsInSheet;
+          totalInstallRevenue += installRevenueInSheet;
         } catch (error) {
           console.warn(`Failed to recount install calls from sheet:`, error);
         }
@@ -134,10 +139,15 @@ export class MultiSheetService {
       // Calculate install calls rate using Jobs Revenue sheet row count as denominator
       aggregatedData.installCallsPercentage = (totalInstallCalls / jobsRevenueSheetRowCount) * 100;
       
-      console.log('Install Calls Rate Calculation:', {
+      // Calculate install revenue per call using Jobs Revenue sheet row count as denominator
+      aggregatedData.installRevenuePerCall = totalInstallRevenue / jobsRevenueSheetRowCount;
+      
+      console.log('Install Metrics Calculation:', {
         totalInstallCalls,
+        totalInstallRevenue,
         jobsRevenueSheetRowCount,
-        installCallsPercentage: aggregatedData.installCallsPercentage
+        installCallsPercentage: aggregatedData.installCallsPercentage,
+        installRevenuePerCall: aggregatedData.installRevenuePerCall
       });
     }
     
