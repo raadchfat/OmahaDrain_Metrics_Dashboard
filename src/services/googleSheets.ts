@@ -1,4 +1,5 @@
 import { KPIData, TimeSeriesData, GoogleSheetConfig, MultiSheetConfig } from '../types';
+import { DateRange, isDateInRange, parseDateFromRow } from '../utils/dateUtils';
 
 export class MultiSheetService {
   private config: MultiSheetConfig;
@@ -72,14 +73,14 @@ export class MultiSheetService {
     }
   }
 
-  async getAggregatedKPIData(): Promise<KPIData> {
+  async getAggregatedKPIData(dateRange?: DateRange): Promise<KPIData> {
     const kpiSheets = this.config.sheets.filter(sheet => 
       sheet.isActive && sheet.dataType === 'kpi'
     );
 
     if (kpiSheets.length === 0) {
       // Fallback to demo data if no sheets configured
-      return this.getDemoKPIData();
+      return this.getDemoKPIData(dateRange);
     }
 
     const allKPIData: KPIData[] = [];
@@ -90,17 +91,30 @@ export class MultiSheetService {
     for (const sheet of kpiSheets) {
       try {
         const data = await this.fetchSheetData(sheet);
-        const kpiData = this.processKPIData(data, sheet.name);
+        const kpiData = this.processKPIData(data, sheet.name, dateRange);
         
         // Store Jobs Revenue sheet data separately for install calls calculation
         if (sheet.sheetId === '1p_CdgHRpR44Rl9KdUuXPTWmqAoPss251gXtS_ZjyoYQ') {
           jobsRevenueSheetData = kpiData;
-          jobsRevenueSheetRowCount = data.length - 1; // Subtract header row
+          // Filter rows by date range if provided
+          const filteredRows = dateRange ? 
+            data.slice(1).filter(row => {
+              const rowDate = parseDateFromRow(row, 0); // Assuming date is in first column
+              return rowDate && isDateInRange(rowDate, dateRange);
+            }) : 
+            data.slice(1);
+          jobsRevenueSheetRowCount = filteredRows.length;
         }
         
         // Store Sold Line Items sheet data separately for jetting jobs calculation
         if (sheet.sheetId === '1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0') {
-          soldLineItemsSheetData = data.slice(1); // Skip header row
+          // Filter by date range if provided
+          soldLineItemsSheetData = dateRange ? 
+            data.slice(1).filter(row => {
+              const rowDate = parseDateFromRow(row, 0);
+              return rowDate && isDateInRange(rowDate, dateRange);
+            }) : 
+            data.slice(1);
         }
         
         allKPIData.push(kpiData);
@@ -113,7 +127,7 @@ export class MultiSheetService {
     if (allKPIData.length === 0) {
       // Fallback to demo data if all sheets fail
       console.warn('No KPI data could be retrieved from any sheet, using demo data');
-      return this.getDemoKPIData();
+      return this.getDemoKPIData(dateRange);
     }
 
     // Aggregate data from multiple sheets with special handling for install calls rate
@@ -127,7 +141,14 @@ export class MultiSheetService {
       for (const sheet of kpiSheets) {
         try {
           const data = await this.fetchSheetData(sheet);
-          const rows = data.slice(1); // Skip header
+          // Filter rows by date range if provided
+          const rows = dateRange ? 
+            data.slice(1).filter(row => {
+              const rowDate = parseDateFromRow(row, 0);
+              return rowDate && isDateInRange(rowDate, dateRange);
+            }) : 
+            data.slice(1);
+            
           const installCallsInSheet = rows.filter(row => {
             const revenue = this.parseNumber(row[24]); // Column Y
             return revenue >= 10000;
@@ -157,33 +178,35 @@ export class MultiSheetService {
         
         aggregatedData.jettingJobsPercentage = (jettingJobs / jobsRevenueSheetRowCount) * 100;
         
-        console.log('Jetting Jobs Calculation:', {
+        console.log('Jetting Jobs Calculation (filtered):', {
           jettingJobsFromSoldLineItems: jettingJobs,
           jobsRevenueSheetRowCount,
-          jettingJobsPercentage: aggregatedData.jettingJobsPercentage
+          jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
+          dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
         });
       }
       
-      console.log('Install Metrics Calculation:', {
+      console.log('Install Metrics Calculation (filtered):', {
         totalInstallCalls,
         totalInstallRevenue,
         jobsRevenueSheetRowCount,
         installCallsPercentage: aggregatedData.installCallsPercentage,
-        installRevenuePerCall: aggregatedData.installRevenuePerCall
+        installRevenuePerCall: aggregatedData.installRevenuePerCall,
+        dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
       });
     }
     
     return aggregatedData;
   }
 
-  async getAggregatedTimeSeriesData(): Promise<TimeSeriesData[]> {
+  async getAggregatedTimeSeriesData(dateRange?: DateRange): Promise<TimeSeriesData[]> {
     const timeSeriesSheets = this.config.sheets.filter(sheet => 
       sheet.isActive && sheet.dataType === 'timeseries'
     );
 
     if (timeSeriesSheets.length === 0) {
       // Generate demo time series data
-      return this.getDemoTimeSeriesData();
+      return this.getDemoTimeSeriesData(dateRange);
     }
 
     const allTimeSeriesData: TimeSeriesData[] = [];
@@ -191,7 +214,7 @@ export class MultiSheetService {
     for (const sheet of timeSeriesSheets) {
       try {
         const data = await this.fetchSheetData(sheet);
-        const timeSeriesData = this.processTimeSeriesData(data, sheet.name);
+        const timeSeriesData = this.processTimeSeriesData(data, sheet.name, dateRange);
         allTimeSeriesData.push(...timeSeriesData);
       } catch (error) {
         console.warn(`Failed to fetch time series data from sheet ${sheet.name}:`, error);
@@ -199,7 +222,7 @@ export class MultiSheetService {
     }
 
     if (allTimeSeriesData.length === 0) {
-      return this.getDemoTimeSeriesData();
+      return this.getDemoTimeSeriesData(dateRange);
     }
 
     return allTimeSeriesData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -219,16 +242,25 @@ export class MultiSheetService {
     }
   }
 
-  private processKPIData(data: any[][], sheetName: string): KPIData {
+  private processKPIData(data: any[][], sheetName: string, dateRange?: DateRange): KPIData {
     if (!data || data.length < 2) {
       throw new Error('Insufficient data in sheet');
     }
 
-    const rows = data.slice(1); // Skip header row
+    // Filter rows by date range if provided
+    let rows = data.slice(1); // Skip header row
+    
+    if (dateRange) {
+      rows = rows.filter(row => {
+        const rowDate = parseDateFromRow(row, 0); // Assuming date is in first column
+        return rowDate && isDateInRange(rowDate, dateRange);
+      });
+    }
+    
     const totalCalls = rows.length;
     
     if (totalCalls === 0) {
-      throw new Error('No data rows found in sheet');
+      throw new Error(`No data rows found in sheet for the selected time period`);
     }
 
     // Column Y is index 24 (Y = 25th column, 0-indexed = 24)
@@ -293,11 +325,12 @@ export class MultiSheetService {
     const totalHours = rows.reduce((sum, row) => sum + this.parseNumber(row[3] || row[4] || 0), 0); // Duration column
     const totalTechPay = rows.reduce((sum, row) => sum + this.parseNumber(row[4] || row[5] || 0), 0); // Tech pay column
 
-    console.log(`Sheet ${sheetName} processed:`, {
+    console.log(`Sheet ${sheetName} processed (filtered):`, {
       totalRows: totalCalls,
       installCalls,
       installRevenue,
-      totalRevenue
+      totalRevenue,
+      dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
     });
     
     return {
@@ -390,12 +423,20 @@ export class MultiSheetService {
     return rows.length > 0 ? (reviewCount / rows.length) * 100 : 0;
   }
 
-  private processTimeSeriesData(data: any[][], sheetName: string): TimeSeriesData[] {
+  private processTimeSeriesData(data: any[][], sheetName: string, dateRange?: DateRange): TimeSeriesData[] {
     if (!data || data.length < 2) {
       return [];
     }
 
-    const rows = data.slice(1); // Skip header row
+    let rows = data.slice(1); // Skip header row
+    
+    if (dateRange) {
+      rows = rows.filter(row => {
+        const rowDate = parseDateFromRow(row, 0);
+        return rowDate && isDateInRange(rowDate, dateRange);
+      });
+    }
+    
     return rows.map(row => ({
       date: row[0],
       value: parseFloat(row[2] || '0'),
@@ -446,34 +487,40 @@ export class MultiSheetService {
     return (row[index] || '').toString().trim();
   }
 
-  private getDemoKPIData(): KPIData {
+  private getDemoKPIData(dateRange?: DateRange): KPIData {
+    // Simulate different values based on time frame to show the filtering is working
+    const baseMultiplier = dateRange ? this.getTimeFrameMultiplier(dateRange) : 1;
+    
     return {
-      installCallsPercentage: 16.5,
-      installRevenuePerCall: 2850,
-      jettingJobsPercentage: 22.3,
-      jettingRevenuePerCall: 425,
-      descalingJobsPercentage: 18.7,
-      descalingRevenuePerCall: 350,
-      membershipConversionRate: 15.8,
-      totalMembershipsRenewed: 42,
-      techPayPercentage: 18.5,
-      laborRevenuePerHour: 125.75,
-      jobEfficiency: 92.3,
-      zeroRevenueCallPercentage: 3.2,
-      diagnosticFeeOnlyPercentage: 12.5,
-      callbackPercentage: 4.1,
-      clientComplaintPercentage: 2.3,
-      clientReviewPercentage: 87.5
+      installCallsPercentage: 16.5 * baseMultiplier,
+      installRevenuePerCall: 2850 * baseMultiplier,
+      jettingJobsPercentage: 22.3 * baseMultiplier,
+      jettingRevenuePerCall: 425 * baseMultiplier,
+      descalingJobsPercentage: 18.7 * baseMultiplier,
+      descalingRevenuePerCall: 350 * baseMultiplier,
+      membershipConversionRate: 15.8 * baseMultiplier,
+      totalMembershipsRenewed: Math.round(42 * baseMultiplier),
+      techPayPercentage: 18.5 * baseMultiplier,
+      laborRevenuePerHour: 125.75 * baseMultiplier,
+      jobEfficiency: Math.min(95, 92.3 * baseMultiplier),
+      zeroRevenueCallPercentage: Math.max(1, 3.2 / baseMultiplier),
+      diagnosticFeeOnlyPercentage: Math.max(5, 12.5 / baseMultiplier),
+      callbackPercentage: Math.max(1, 4.1 / baseMultiplier),
+      clientComplaintPercentage: Math.max(0.5, 2.3 / baseMultiplier),
+      clientReviewPercentage: Math.min(95, 87.5 * baseMultiplier)
     };
   }
 
-  private getDemoTimeSeriesData(): TimeSeriesData[] {
+  private getDemoTimeSeriesData(dateRange?: DateRange): TimeSeriesData[] {
     const data = [];
-    const today = new Date();
+    const endDate = dateRange ? dateRange.end : new Date();
+    const startDate = dateRange ? dateRange.start : new Date(endDate.getTime() - 6 * 24 * 60 * 60 * 1000);
     
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+    const maxPoints = Math.min(daysDiff, 30); // Limit to 30 data points max
+    
+    for (let i = 0; i < maxPoints; i++) {
+      const date = new Date(startDate.getTime() + (i * (daysDiff / maxPoints) * 24 * 60 * 60 * 1000));
       
       data.push({
         date: date.toISOString().split('T')[0],
@@ -483,6 +530,17 @@ export class MultiSheetService {
     }
     
     return data;
+  }
+  
+  private getTimeFrameMultiplier(dateRange: DateRange): number {
+    const daysDiff = Math.ceil((dateRange.end.getTime() - dateRange.start.getTime()) / (24 * 60 * 60 * 1000));
+    
+    // Simulate realistic variations based on time period
+    if (daysDiff <= 1) return 0.3; // Today/Yesterday - lower volume
+    if (daysDiff <= 7) return 0.7; // Week
+    if (daysDiff <= 30) return 0.9; // Month
+    if (daysDiff <= 90) return 1.1; // Quarter
+    return 1.2; // Year - higher accumulated values
   }
 }
 

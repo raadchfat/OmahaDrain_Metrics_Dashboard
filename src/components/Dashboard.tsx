@@ -5,6 +5,7 @@ import { TrendChart } from './charts/TrendChart';
 import { TimeFrameFilter } from './filters/TimeFrameFilter';
 import { MultiSheetService } from '../services/googleSheets';
 import { KPIData, TimeFrame, TimeSeriesData, MultiSheetConfig } from '../types';
+import { getDateRangeFromTimeFrame } from '../utils/dateUtils';
 
 export const Dashboard: React.FC = () => {
   const [kpiData, setKpiData] = useState<KPIData | null>(null);
@@ -123,9 +124,10 @@ export const Dashboard: React.FC = () => {
         // Try to load data with saved configuration
         try {
           const multiSheetService = new MultiSheetService(config);
+          const dateRange = getDateRangeFromTimeFrame(timeFrame);
           const [kpis, trends] = await Promise.all([
-            multiSheetService.getAggregatedKPIData(),
-            multiSheetService.getAggregatedTimeSeriesData()
+            multiSheetService.getAggregatedKPIData(dateRange),
+            multiSheetService.getAggregatedTimeSeriesData(dateRange)
           ]);
           
           // Add debug information
@@ -134,6 +136,8 @@ export const Dashboard: React.FC = () => {
             activeSheets: config.sheets.filter(s => s.isActive).length,
             dataLoadedAt: new Date().toISOString(),
             kpiDataSource: 'Google Sheets',
+            timeFrame: timeFrame,
+            dateRange: `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}`,
             sampleKpiValues: {
               installCallsPercentage: kpis.installCallsPercentage,
               installRevenuePerCall: kpis.installRevenuePerCall,
@@ -145,7 +149,7 @@ export const Dashboard: React.FC = () => {
           setTrendData(trends);
           setIsLoading(false);
           setConnectionStatus('success');
-          setConnectionMessage('Successfully loaded data from Google Sheets!');
+          setConnectionMessage(`Successfully loaded data from Google Sheets for ${timeFrame}!`);
           return;
         } catch (savedConfigError) {
           console.warn('Failed to load data with saved configuration, falling back to demo data:', savedConfigError);
@@ -163,6 +167,7 @@ export const Dashboard: React.FC = () => {
         activeSheets: 0,
         dataLoadedAt: new Date().toISOString(),
         kpiDataSource: 'Demo Data',
+        timeFrame: timeFrame,
         note: 'Using fallback demo data'
       });
       
@@ -181,10 +186,11 @@ export const Dashboard: React.FC = () => {
       };
       
       const multiSheetService = new MultiSheetService(config);
+      const dateRange = getDateRangeFromTimeFrame(timeFrame);
       
       const [kpis, trends] = await Promise.all([
-        multiSheetService.getAggregatedKPIData(),
-        multiSheetService.getAggregatedTimeSeriesData()
+        multiSheetService.getAggregatedKPIData(dateRange),
+        multiSheetService.getAggregatedTimeSeriesData(dateRange)
       ]);
       
       setKpiData(kpis);
@@ -452,6 +458,10 @@ export const Dashboard: React.FC = () => {
               </p>
             </div>
             <div>
+              <span className="font-medium text-gray-600">Time Frame:</span>
+              <p className="text-gray-900 capitalize">{debugInfo.timeFrame}</p>
+            </div>
+            <div>
               <span className="font-medium text-gray-600">Sheets Configured:</span>
               <p className="text-gray-900">{debugInfo.sheetsConfigured}</p>
             </div>
@@ -463,13 +473,13 @@ export const Dashboard: React.FC = () => {
               <span className="font-medium text-gray-600">Last Updated:</span>
               <p className="text-gray-900">{new Date(debugInfo.dataLoadedAt).toLocaleTimeString()}</p>
             </div>
-            <div>
-              <span className="font-medium text-gray-600">Data Quality:</span>
-              <p className={debugInfo.kpiDataSource === 'Google Sheets' ? 'text-green-600 font-medium' : 'text-orange-600'}>
-                {debugInfo.kpiDataSource === 'Google Sheets' ? '✓ Live Data' : '⚠ Demo Data'}
-              </p>
-            </div>
           </div>
+          {debugInfo.dateRange && (
+            <div className="mt-2">
+              <span className="font-medium text-gray-600">Date Range:</span>
+              <span className="text-gray-900 ml-2">{debugInfo.dateRange}</span>
+            </div>
+          )}
           {debugInfo.sampleKpiValues && (
             <div className="mt-3 pt-3 border-t border-gray-200">
               <span className="font-medium text-gray-600">Live KPI Values from Your Sheets:</span>
@@ -489,7 +499,7 @@ export const Dashboard: React.FC = () => {
             <div className="mt-3 pt-3 border-t border-gray-200">
               <div className="flex items-center gap-2 text-sm text-green-700">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="font-medium">Real-time data from your Google Sheets is now active!</span>
+                <span className="font-medium">Real-time data from your Google Sheets is now active for {timeFrame}!</span>
               </div>
             </div>
           )}
