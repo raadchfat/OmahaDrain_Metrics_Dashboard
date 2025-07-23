@@ -96,6 +96,12 @@ export const DataInspector: React.FC = () => {
 
     console.log(`=== ANALYZING SHEET ${sheetIndex + 1} ===`);
     console.log('Sheet config:', config?.sheets[sheetIndex]);
+    
+    // Add timeout and retry logic
+    const MAX_RETRIES = 2;
+    let retryCount = 0;
+    
+    const attemptAnalysis = async (): Promise<void> => {
     try {
       if (!config) throw new Error('No configuration found');
       
@@ -209,7 +215,34 @@ export const DataInspector: React.FC = () => {
       
       console.log(`Starting analysis of ${activeSheetIndices.length} active sheets`);
       
-      // Analyze sheets one by one to avoid overwhelming the API
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const testResponse = await fetch(testUrl, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        console.error(`❌ Error analyzing sheet ${sheetIndex} (attempt ${retryCount + 1}):`, error);
+        
+        // Check if it's a network/communication error that might benefit from retry
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const isRetryableError = errorMessage.includes('AbortError') || 
+                                errorMessage.includes('NetworkError') ||
+                                errorMessage.includes('listener indicated') ||
+                                errorMessage.includes('message channel closed');
+        
+        if (isRetryableError && retryCount < MAX_RETRIES) {
+          retryCount++;
+          console.log(`🔄 Retrying analysis for sheet ${sheetIndex} (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Progressive delay
+          return attemptAnalysis();
+        }
+        
+        
       for (const sheetIndex of activeSheetIndices) {
         console.log(`Analyzing sheet ${sheetIndex + 1} of ${activeSheetIndices.length}`);
         await analyzeSheet(sheetIndex);
@@ -222,7 +255,16 @@ export const DataInspector: React.FC = () => {
       
       console.log('All sheet analysis completed');
     } catch (error) {
+        } else if (errorMessage.includes('AbortError') || errorMessage.includes('listener indicated')) {
+          updatedAnalyses[sheetIndex].error = 'Connection Timeout: The request was interrupted. This might be due to browser extensions or network issues. Try again.';
       console.error('Error in analyzeAllSheets:', error);
+      }
+    };
+    
+    try {
+      await attemptAnalysis();
+    } catch (error) {
+      console.error(`❌ Final error for sheet ${sheetIndex}:`, error);
     }
     
     setIsAnalyzing(false);
