@@ -18,11 +18,33 @@ export class MultiSheetService {
       // Make real API call to Google Sheets
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetConfig.sheetId}/values/${sheetConfig.range}?key=${apiKey}`;
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        mode: 'cors'
+      });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`Google Sheets API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.error?.message) {
+            errorMessage = errorData.error.message;
+          }
+        } catch (parseError) {
+          // If we can't parse the error response, use the status text
+        }
+        
+        if (response.status === 403) {
+          throw new Error(`Access denied. Please check your API key configuration in Google Cloud Console. ${errorMessage}`);
+        } else if (response.status === 400) {
+          throw new Error(`Invalid request. Please check your Sheet ID and range. ${errorMessage}`);
+        } else {
+          throw new Error(`Google Sheets API error: ${errorMessage}`);
+        }
       }
       
       const data = await response.json();
@@ -33,6 +55,10 @@ export class MultiSheetService {
       
       return data.values;
     } catch (error) {
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error(`Network error: Unable to connect to Google Sheets API. This may be due to CORS restrictions or network connectivity issues.`);
+      }
+      
       console.error(`Error fetching data from sheet ${sheetConfig.name}:`, error);
       throw error;
     }

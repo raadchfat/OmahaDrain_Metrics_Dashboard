@@ -68,7 +68,9 @@ export const Dashboard: React.FC = () => {
           }
           successCount++;
         } catch (error) {
-          errorMessages.push(`${sheet.name}: ${error instanceof Error ? error.message : 'Connection failed'}`);
+          const errorMsg = error instanceof Error ? error.message : 'Connection failed';
+          errorMessages.push(`${sheet.name}: ${errorMsg}`);
+          console.error(`Connection test failed for ${sheet.name}:`, error);
         }
       }
 
@@ -77,15 +79,16 @@ export const Dashboard: React.FC = () => {
         setConnectionMessage(`Successfully connected to all ${successCount} active sheet(s)! Data is being processed for KPI calculations.`);
       } else if (successCount > 0) {
         setConnectionStatus('error');
-        setConnectionMessage(`Connected to ${successCount}/${activeSheets.length} sheets. Errors: ${errorMessages.join(', ')}`);
+        setConnectionMessage(`Connected to ${successCount}/${activeSheets.length} sheets. Issues found: ${errorMessages.slice(0, 2).join('; ')}${errorMessages.length > 2 ? '...' : ''}`);
       } else {
         setConnectionStatus('error');
-        setConnectionMessage(`Failed to connect to any sheets. Errors: ${errorMessages.join(', ')}`);
+        setConnectionMessage(`Failed to connect to any sheets. Common issues: ${errorMessages.slice(0, 1).join('')}. Check your API key configuration in Google Cloud Console.`);
       }
 
     } catch (error) {
       setConnectionStatus('error');
-      setConnectionMessage(`Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      setConnectionMessage(`Connection test failed: ${errorMsg}. Please verify your Google Cloud Console settings.`);
     }
 
     setIsTestingConnection(false);
