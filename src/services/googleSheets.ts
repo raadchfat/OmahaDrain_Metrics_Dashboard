@@ -171,45 +171,11 @@ API Error: ${errorMessage}`);
     
     // Calculate jetting jobs rate using Sold Line Items sheet
     if (soldLineItemsSheetData.length > 0) {
-      // Excel formula: =SUMIF('Sold Line Items'!R:R,"*Jetting*",'Sold Line Items'!Y:Y)/(COUNTA('Jobs Revenue'!A:A)-1)
+      const jettingMetrics = this.calculateJettingJobsFromGuide(soldLineItemsSheetData, dateRange);
+      aggregatedData.jettingJobsPercentage = jettingMetrics.jettingJobsPercentage;
+      aggregatedData.jettingRevenuePerCall = jettingMetrics.jettingRevenuePerCall;
       
-      // SUMIF('Sold Line Items'!R:R,"*Jetting*",'Sold Line Items'!Y:Y) - Sum revenue where description contains "Jetting"
-      const jettingRevenue = soldLineItemsSheetData
-        .filter(row => {
-          const description = this.getString(row, 17).toLowerCase(); // Column R (18th column, 0-indexed = 17)
-          return description.includes('jetting');
-        })
-        .reduce((sum, row) => {
-          const revenue = this.parseNumber(row[24]); // Column Y (25th column, 0-indexed = 24)
-          return sum + revenue;
-        }, 0);
-      
-      // Get unique jobs count for denominator
-      const uniqueJobs = this.getUniqueJobsInDateRange(soldLineItemsSheetData, dateRange);
-      
-      // Calculate jetting revenue per call using unique jobs count as denominator
-      aggregatedData.jettingRevenuePerCall = uniqueJobs.length > 0 ? jettingRevenue / uniqueJobs.length : 0;
-      
-      // For jetting jobs percentage, we can calculate based on jetting line items vs total calls
-      const jettingJobNumbers = new Set<string>();
-      soldLineItemsSheetData.forEach(row => {
-        const descriptionR = this.getString(row, 17).toLowerCase(); // Column R
-        const jobNumber = this.getString(row, 13); // Column N
-        if (descriptionR.includes('jetting') && jobNumber && jobNumber.trim() !== '') {
-          jettingJobNumbers.add(jobNumber.trim());
-        }
-      });
-      aggregatedData.jettingJobsPercentage = uniqueJobs.length > 0 ? (jettingJobNumbers.size / uniqueJobs.length) * 100 : 0;
-      
-      console.log('Excel SUMIF Jetting Calculation:', {
-        formula: "=SUMIF('Sold Line Items'!R:R,\"*Jetting*\",'Sold Line Items'!Y:Y)/(COUNTA('Jobs Revenue'!A:A)-1)",
-        sumifResult: jettingRevenue, // SUMIF('Sold Line Items'!R:R,"*Jetting*",'Sold Line Items'!Y:Y)
-        countaResult: uniqueJobs.length, // Unique jobs count
-        uniqueJettingJobs: Array.from(jettingJobNumbers).slice(0, 10),
-        jettingRevenuePerJob: aggregatedData.jettingRevenuePerCall,
-        jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
-        dateRange: dateRange ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` : 'All time'
-      });
+      console.log('Jetting Jobs Calculation (Guide Method):', jettingMetrics);
     }
     
     return aggregatedData;
@@ -288,6 +254,92 @@ API Error: ${errorMessage}`);
       uniqueJobsCount: uniqueJobs.length,
       installJobsCount,
       totalInstallRevenue
+    };
+  }
+
+  /**
+   * Calculate Jetting Jobs Rate following the guide methodology:
+   * Jetting Jobs % = Jetting Jobs Performed ÷ number of jobs performed
+   * 
+   * Step 1: Get unique jobs in date range
+   * Step 2: Count unique jobs that had jetting services (Line Item column R contains "jet")
+   * Step 3: Calculate percentage and revenue metrics
+   */
+  private calculateJettingJobsFromGuide(soldLineItemsData: any[][], dateRange?: DateRange): {
+    jettingJobsPercentage: number;
+    jettingRevenuePerCall: number;
+    uniqueJobsCount: number;
+    jettingJobsCount: number;
+    totalJettingRevenue: number;
+  } {
+    // Step 1: Get unique jobs in date range
+    const uniqueJobs = this.getUniqueJobsInDateRange(soldLineItemsData, dateRange);
+    
+    if (uniqueJobs.length === 0) {
+      return {
+        jettingJobsPercentage: 0,
+        jettingRevenuePerCall: 0,
+        uniqueJobsCount: 0,
+        jettingJobsCount: 0,
+        totalJettingRevenue: 0
+      };
+    }
+    
+    // Step 2: Find unique jobs that had jetting services
+    // Check if ANY line item for each job contains "jet" in Line Item column (R)
+    const jettingJobNumbers = new Set<string>();
+    let totalJettingRevenue = 0;
+    
+    for (const job of uniqueJobs) {
+      // Check all line items for this job to see if any contain "jet"
+      const jobLineItems = soldLineItemsData.filter(row => {
+        const rowJob = this.getString(row, 13); // Column N (Job)
+        const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+        
+        // Check if job matches and date is in range (if specified)
+        const jobMatches = rowJob.trim() === job.trim();
+        const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
+        
+        return jobMatches && dateInRange;
+      });
+      
+      // Check if any line item for this job contains "jet" in Line Item column (R)
+      const hasJettingService = jobLineItems.some(row => {
+        const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+        return lineItem.includes('jet');
+      });
+      
+      if (hasJettingService) {
+        jettingJobNumbers.add(job.trim());
+        
+        // Sum revenue for all jetting line items for this job
+        const jobJettingRevenue = jobLineItems
+          .filter(row => {
+            const lineItem = this.getString(row, 17).toLowerCase(); // Column R
+            return lineItem.includes('jet');
+          })
+          .reduce((sum, row) => {
+            const revenue = this.parseNumber(row[24]); // Column Y (Price/Revenue)
+            return sum + revenue;
+          }, 0);
+        
+        totalJettingRevenue += jobJettingRevenue;
+      }
+    }
+    
+    // Step 3: Calculate the KPIs
+    const jettingJobsCount = jettingJobNumbers.size;
+    const jettingJobsPercentage = uniqueJobs.length > 0 ? (jettingJobsCount / uniqueJobs.length) * 100 : 0;
+    
+    // Jetting Revenue per Call = Total Jetting Revenue ÷ Total Unique Jobs (not just jetting jobs)
+    const jettingRevenuePerCall = uniqueJobs.length > 0 ? totalJettingRevenue / uniqueJobs.length : 0;
+    
+    return {
+      jettingJobsPercentage,
+      jettingRevenuePerCall,
+      uniqueJobsCount: uniqueJobs.length,
+      jettingJobsCount,
+      totalJettingRevenue
     };
   }
 

@@ -260,8 +260,8 @@ export const Dashboard: React.FC = () => {
       title: 'Jetting Jobs Rate',
       value: kpiData.jettingJobsPercentage,
       unit: '%',
-      description: '% of Jetting Jobs / # of Drain Cleaning Calls',
-      formula: '(# of Jetting Jobs) ÷ (# of Drain Cleaning Calls) × 100',
+      description: 'Percentage of unique jobs that included jetting services',
+      formula: 'Jetting Jobs Performed ÷ Total Jobs Performed × 100',
       color: 'orange' as const,
       trend: 'down' as const,
       trendValue: -2.1
@@ -270,8 +270,8 @@ export const Dashboard: React.FC = () => {
       title: 'Jetting Revenue per Call',
       value: kpiData.jettingRevenuePerCall,
       unit: '$',
-      description: 'Jetting Revenue / # of Drain Cleaning Calls',
-      formula: '(Total Jetting Revenue) ÷ (# of Drain Cleaning Calls)',
+      description: 'Total jetting revenue divided by total number of jobs',
+      formula: 'Total Jetting Revenue ÷ Total Jobs Performed',
       color: 'purple' as const,
       trend: 'up' as const,
       trendValue: 8.5
