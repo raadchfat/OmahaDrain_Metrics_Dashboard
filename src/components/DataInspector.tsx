@@ -204,6 +204,9 @@ export const DataInspector: React.FC = () => {
     
     setAnalyses(updatedAnalyses);
   };
+  
+  await attemptAnalysis();
+  };
 
   const analyzeAllSheets = async () => {
     setIsAnalyzing(true);
