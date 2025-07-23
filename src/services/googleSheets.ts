@@ -233,7 +233,7 @@ export class MultiSheetService {
       // Get unique job numbers from Sold Line Items sheet (assuming job # is in column A or first column)
       const uniqueJobNumbers = new Set();
       soldLineItemsSheetData.forEach(row => {
-        const jobNumber = this.getString(row, 0); // Column A for job #
+        const jobNumber = this.getString(row, 13); // Column N for job # (N = 14th column, 0-indexed = 13)
         if (jobNumber && jobNumber.trim() !== '') {
           uniqueJobNumbers.add(jobNumber.trim());
         }
