@@ -279,6 +279,7 @@ API Error: ${errorMessage}`);
     
     // Step 4: Calculate the KPI
     const installCallsPercentage = uniqueJobs.length > 0 ? (installJobsCount / uniqueJobs.length) * 100 : 0;
+    // Install Revenue per Call = Total Install Jobs Revenue ÷ Count of Unique Job Numbers
     const installRevenuePerCall = uniqueJobs.length > 0 ? totalInstallRevenue / uniqueJobs.length : 0;
     
     return {
