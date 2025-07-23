@@ -118,6 +118,11 @@ API Error: ${errorMessage}`);
       sheet.isActive && sheet.dataType === 'kpi'
     );
 
+    console.log('getAggregatedKPIData called with:', {
+      kpiSheetsCount: kpiSheets.length,
+      dateRange: dateRange ? `${dateRange.start.toISOString()} - ${dateRange.end.toISOString()}` : 'none',
+      cacheSize: this.sheetDataCache.size
+    });
 
     const allKPIData: KPIData[] = [];
     let soldLineItemsSheetData: any[][] = [];
@@ -133,13 +138,17 @@ API Error: ${errorMessage}`);
           try {
             data = await this.fetchSheetData(sheet);
             this.sheetDataCache.set(sheet.sheetId, data);
+            console.log(`Successfully fetched and cached data for ${sheet.name}:`, data.length, 'rows');
           } catch (fetchError) {
             console.warn(`Failed to fetch data for sheet ${sheet.name}:`, fetchError);
             continue;
           }
+        } else {
+          console.log(`Using cached data for ${sheet.name}:`, data.length, 'rows');
         }
         
         const kpiData = this.processKPIData(data, sheet.name, dateRange);
+        console.log(`Processed KPI data for ${sheet.name}:`, kpiData);
         
         allKPIData.push(kpiData);
       } catch (error) {
@@ -148,12 +157,14 @@ API Error: ${errorMessage}`);
       }
     }
 
+    console.log('All KPI data collected:', allKPIData.length, 'sheets');
     // Fetch Sold Line Items sheet data separately for jetting jobs calculation
     const soldLineItemsSheet = this.config.sheets.find(sheet =>
       sheet.isActive && sheet.sheetId === '1fsGnYEklIM0F3gcihWC2xYk1SyNGBH4fs_HIGt_MCG0'
     );
     
     if (soldLineItemsSheet) {
+      console.log('Processing Sold Line Items sheet for calculations...');
       try {
         let soldLineItemsData = this.getCachedSheetData(soldLineItemsSheet.sheetId);
         
@@ -163,6 +174,7 @@ API Error: ${errorMessage}`);
           try {
             soldLineItemsData = await this.fetchSheetData(soldLineItemsSheet);
             this.sheetDataCache.set(soldLineItemsSheet.sheetId, soldLineItemsData);
+            console.log('Successfully fetched Sold Line Items data:', soldLineItemsData.length, 'rows');
           } catch (fetchError) {
             console.warn('Failed to fetch Sold Line Items sheet:', fetchError);
             soldLineItemsData = null;
@@ -193,16 +205,25 @@ API Error: ${errorMessage}`);
       } catch (error) {
         console.warn('Failed to fetch Sold Line Items sheet for jetting calculation:', error);
       }
+    } else {
+      console.warn('Sold Line Items sheet not found or not active');
     }
 
-    if (allKPIData.length === 0 && soldLineItemsSheetData.length === 0) {
+    console.log('Final data check:', {
+      allKPIDataLength: allKPIData.length,
+      soldLineItemsDataLength: soldLineItemsSheetData.length,
+      willUseDemoData: allKPIData.length === 0 && soldLineItemsSheetData.length === 0
+    });
+
+    if (allKPIData.length === 0) {
       // Fallback to demo data if all sheets fail
-      console.warn('No KPI data could be retrieved from any sheet, using demo data');
+      console.warn('No KPI data could be retrieved from any sheet, using demo data with date range:', dateRange);
       return this.getDemoKPIData(dateRange);
     }
 
     // Aggregate data from multiple sheets with special handling for install calls rate
     const aggregatedData = allKPIData.length > 0 ? this.aggregateKPIData(allKPIData) : this.getDemoKPIData(dateRange);
+    console.log('Aggregated base data:', aggregatedData);
     
     // Calculate Install Calls Rate using the guide methodology
     if (soldLineItemsSheetData.length > 0) {
@@ -231,6 +252,7 @@ API Error: ${errorMessage}`);
       console.log('Descaling Jobs Calculation (Guide Method):', descalingMetrics);
     }
     
+    console.log('Final aggregated data being returned:', aggregatedData);
     return aggregatedData;
   }
 

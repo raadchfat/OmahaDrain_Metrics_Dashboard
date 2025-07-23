@@ -113,6 +113,8 @@ export const Dashboard: React.FC = () => {
     setConnectionStatus('idle');
     setConnectionMessage('');
     
+    console.log('Dashboard loadData started for timeFrame:', timeFrame);
+    
     try {
       // Load configuration from localStorage
       const savedConfig = localStorage.getItem('multiSheetConfig');
@@ -120,6 +122,11 @@ export const Dashboard: React.FC = () => {
       
       if (savedConfig) {
         config = JSON.parse(savedConfig);
+        console.log('Loaded config from localStorage:', {
+          globalApiKey: config.globalApiKey ? 'present' : 'missing',
+          sheetsCount: config.sheets.length,
+          activeSheets: config.sheets.filter(s => s.isActive).length
+        });
         
         // Try to load data with saved configuration
         try {
@@ -134,10 +141,14 @@ export const Dashboard: React.FC = () => {
           }
           
           const dateRange = getDateRangeFromTimeFrame(timeFrame);
+          console.log('Date range for', timeFrame, ':', dateRange);
+          
           const [kpis, trends] = await Promise.all([
             multiSheetService.getAggregatedKPIData(dateRange),
             multiSheetService.getAggregatedTimeSeriesData(dateRange)
           ]);
+          
+          console.log('Successfully loaded KPIs and trends:', { kpis, trendsLength: trends.length });
           
           // Add debug information
           setDebugInfo({
@@ -159,6 +170,7 @@ export const Dashboard: React.FC = () => {
           setIsLoading(false);
           setConnectionStatus('success');
           setConnectionMessage(`Successfully loaded data from Google Sheets for ${timeFrame}!`);
+          console.log('Dashboard data loading completed successfully');
           return;
         } catch (savedConfigError) {
           console.warn('Failed to load data with saved configuration, falling back to demo data:', savedConfigError);
@@ -168,6 +180,8 @@ export const Dashboard: React.FC = () => {
           const errorMsg = savedConfigError instanceof Error ? savedConfigError.message : 'Unknown error';
           setConnectionMessage(`Failed to load data from Google Sheets: ${errorMsg}. Displaying demo data instead. Please check your API configuration.`);
         }
+      } else {
+        console.log('No saved config found, using demo data');
       }
       
       // Set debug info for demo data
@@ -202,6 +216,7 @@ export const Dashboard: React.FC = () => {
         multiSheetService.getAggregatedTimeSeriesData(dateRange)
       ]);
       
+      console.log('Demo data loaded:', { kpis, trendsLength: trends.length });
       setKpiData(kpis);
       setTrendData(trends);
     } catch (error) {
@@ -234,6 +249,7 @@ export const Dashboard: React.FC = () => {
       setTrendData([]);
     }
     setIsLoading(false);
+    console.log('Dashboard loadData completed');
   };
 
   if (isLoading || !kpiData) {
