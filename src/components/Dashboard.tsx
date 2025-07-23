@@ -241,7 +241,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.installCallsPercentage,
       unit: '%',
       description: '% of Install Calls ($10k+) / Drain Cleaning Calls',
-      formula: '=SUM(AD2:AD) / COUNTA(AB2:AB) × 100 | Where AB=UNIQUE(FILTER(N2:N,(B2:B>=AA1)*(B2:B<=AA2))), AC=SUMIFS(T$2:T$10000,N$2:N$10000,AB2,B$2:B$10000,">="&$AA$1,B$2:B$10000,"<="&$AA$2), AD=IF(AC2>=10000,1,0)',
+      formula: 'Install Call Rate% = Count of Install Jobs (≥10k) / Number of Service Calls',
       color: 'blue' as const,
       trend: 'up' as const,
       trendValue: 5.2
