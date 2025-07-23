@@ -131,26 +131,21 @@ export class MultiSheetService {
         if (dateRange) {
           const dataRows = soldLineItemsData.slice(1);
           soldLineItemsSheetData = dataRows.filter(row => {
-            // Try multiple columns for date (0, 1, 2) as the date might not be in first column
-            for (let dateCol = 0; dateCol <= 2; dateCol++) {
-              const rowDate = parseDateFromRow(row, dateCol);
-              if (rowDate && isDateInRange(rowDate, dateRange)) {
-                return true;
-              }
-            }
-            return false;
+            // Use column B (index 1) for date in Sold Line Items sheet
+            const rowDate = parseDateFromRow(row, 1);
+            return rowDate && isDateInRange(rowDate, dateRange);
           });
           
           // If no rows found with date filtering, use all rows (might be no date column)
           if (soldLineItemsSheetData.length === 0) {
-            console.warn('No date-filtered rows found in Sold Line Items, using all rows');
+            console.warn('No date-filtered rows found in Sold Line Items using column B, using all rows');
             soldLineItemsSheetData = dataRows;
           }
         } else {
           soldLineItemsSheetData = soldLineItemsData.slice(1);
         }
         
-        console.log(`Sold Line Items sheet processed: ${soldLineItemsSheetData.length} rows after filtering`);
+        console.log(`Sold Line Items sheet processed: ${soldLineItemsSheetData.length} rows after filtering (using column B for dates)`);
       } catch (error) {
         console.warn('Failed to fetch Sold Line Items sheet for jetting calculation:', error);
       }
