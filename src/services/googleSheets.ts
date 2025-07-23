@@ -83,11 +83,20 @@ export class MultiSheetService {
     }
 
     const allKPIData: KPIData[] = [];
+    let jobsRevenueSheetData: KPIData | null = null;
+    let jobsRevenueSheetRowCount = 0;
 
     for (const sheet of kpiSheets) {
       try {
         const data = await this.fetchSheetData(sheet);
         const kpiData = this.processKPIData(data, sheet.name);
+        
+        // Store Jobs Revenue sheet data separately for install calls calculation
+        if (sheet.sheetId === '1p_CdgHRpR44Rl9KdUuXPTWmqAoPss251gXtS_ZjyoYQ') {
+          jobsRevenueSheetData = kpiData;
+          jobsRevenueSheetRowCount = data.length - 1; // Subtract header row
+        }
+        
         allKPIData.push(kpiData);
       } catch (error) {
         console.warn(`Failed to fetch data from sheet ${sheet.name}:`, error);
@@ -101,8 +110,38 @@ export class MultiSheetService {
       return this.getDemoKPIData();
     }
 
-    // Aggregate data from multiple sheets
-    return this.aggregateKPIData(allKPIData);
+    // Aggregate data from multiple sheets with special handling for install calls rate
+    const aggregatedData = this.aggregateKPIData(allKPIData);
+    
+    // Override install calls rate calculation using Jobs Revenue sheet specifically
+    if (jobsRevenueSheetData && jobsRevenueSheetRowCount > 0) {
+      // Count install calls (≥$10k) from all sheets
+      let totalInstallCalls = 0;
+      for (const sheet of kpiSheets) {
+        try {
+          const data = await this.fetchSheetData(sheet);
+          const rows = data.slice(1); // Skip header
+          const installCallsInSheet = rows.filter(row => {
+            const revenue = this.parseNumber(row[24]); // Column Y
+            return revenue >= 10000;
+          }).length;
+          totalInstallCalls += installCallsInSheet;
+        } catch (error) {
+          console.warn(`Failed to recount install calls from sheet:`, error);
+        }
+      }
+      
+      // Calculate install calls rate using Jobs Revenue sheet row count as denominator
+      aggregatedData.installCallsPercentage = (totalInstallCalls / jobsRevenueSheetRowCount) * 100;
+      
+      console.log('Install Calls Rate Calculation:', {
+        totalInstallCalls,
+        jobsRevenueSheetRowCount,
+        installCallsPercentage: aggregatedData.installCallsPercentage
+      });
+    }
+    
+    return aggregatedData;
   }
 
   async getAggregatedTimeSeriesData(): Promise<TimeSeriesData[]> {
@@ -186,11 +225,6 @@ export class MultiSheetService {
       return revenue >= 10000;
     }).length;
 
-    const drainCleaningCalls = rows.filter(row => 
-      getString(row, 1).toLowerCase().includes('drain cleaning') ||
-      getString(row, 1).toLowerCase().includes('drain') ||
-      getString(row, 1).toLowerCase().includes('cleaning')
-    ).length;
 
     const jettingJobs = rows.filter(row => 
       getString(row, 1).toLowerCase().includes('jetting') ||
@@ -247,18 +281,17 @@ export class MultiSheetService {
     console.log(`Sheet ${sheetName} processed:`, {
       totalRows: totalCalls,
       installCalls,
-      drainCleaningCalls,
       installRevenue,
       totalRevenue
     });
     
     return {
-      installCallsPercentage: drainCleaningCalls > 0 ? (installCalls / drainCleaningCalls) * 100 : 0,
+      installCallsPercentage: totalCalls > 0 ? (installCalls / totalCalls) * 100 : 0,
       installRevenuePerCall: totalCalls > 0 ? installRevenue / totalCalls : 0,
-      jettingJobsPercentage: drainCleaningCalls > 0 ? (jettingJobs / drainCleaningCalls) * 100 : 0,
-      jettingRevenuePerCall: drainCleaningCalls > 0 ? jettingRevenue / drainCleaningCalls : 0,
-      descalingJobsPercentage: drainCleaningCalls > 0 ? (descalingJobs / drainCleaningCalls) * 100 : 0,
-      descalingRevenuePerCall: drainCleaningCalls > 0 ? descalingRevenue / drainCleaningCalls : 0,
+      jettingJobsPercentage: totalCalls > 0 ? (jettingJobs / totalCalls) * 100 : 0,
+      jettingRevenuePerCall: totalCalls > 0 ? jettingRevenue / totalCalls : 0,
+      descalingJobsPercentage: totalCalls > 0 ? (descalingJobs / totalCalls) * 100 : 0,
+      descalingRevenuePerCall: totalCalls > 0 ? descalingRevenue / totalCalls : 0,
       membershipConversionRate: this.calculateMembershipConversion(rows),
       totalMembershipsRenewed: this.calculateMembershipsRenewed(rows),
       techPayPercentage: totalRevenue > 0 ? (totalTechPay / totalRevenue) * 100 : 0,
@@ -381,6 +414,17 @@ export class MultiSheetService {
       clientComplaintPercentage: kpiDataArray.reduce((sum, data) => sum + data.clientComplaintPercentage, 0) / count,
       clientReviewPercentage: kpiDataArray.reduce((sum, data) => sum + data.clientReviewPercentage, 0) / count,
     };
+  }
+
+  private parseNumber(value: any): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      // Remove currency symbols, commas, and other formatting
+      const cleaned = value.replace(/[$,\s]/g, '');
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
   }
 
   private getDemoKPIData(): KPIData {
