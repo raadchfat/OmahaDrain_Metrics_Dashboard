@@ -280,8 +280,8 @@ export const Dashboard: React.FC = () => {
       title: 'Descaling Jobs Rate',
       value: kpiData.descalingJobsPercentage,
       unit: '%',
-      description: '% of Descaling Jobs / # of Drain Cleaning Calls',
-      formula: '(# of Descaling Jobs) ÷ (# of Drain Cleaning Calls) × 100',
+      description: 'Percentage of unique jobs that included descaling services',
+      formula: 'Descaling Jobs Performed ÷ Service Calls Performed × 100',
       color: 'blue' as const,
       trend: 'neutral' as const
     },
@@ -289,8 +289,8 @@ export const Dashboard: React.FC = () => {
       title: 'Descaling Revenue per Call',
       value: kpiData.descalingRevenuePerCall,
       unit: '$',
-      description: 'Descaling Revenue / # of Drain Cleaning Calls',
-      formula: '(Total Descaling Revenue) ÷ (# of Drain Cleaning Calls)',
+      description: 'Total descaling revenue from all descaling line items divided by total jobs performed',
+      formula: 'Descaling Revenue per Service Call = Total Descaling Revenue ÷ Total Jobs Performed',
       color: 'green' as const,
       trend: 'up' as const,
       trendValue: 15.3

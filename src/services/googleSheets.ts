@@ -178,6 +178,15 @@ API Error: ${errorMessage}`);
       console.log('Jetting Jobs Calculation (Guide Method):', jettingMetrics);
     }
     
+    // Calculate descaling jobs rate using Sold Line Items sheet
+    if (soldLineItemsSheetData.length > 0) {
+      const descalingMetrics = this.calculateDescalingJobsFromGuide(soldLineItemsSheetData, dateRange);
+      aggregatedData.descalingJobsPercentage = descalingMetrics.descalingJobsPercentage;
+      aggregatedData.descalingRevenuePerCall = descalingMetrics.descalingRevenuePerCall;
+      
+      console.log('Descaling Jobs Calculation (Guide Method):', descalingMetrics);
+    }
+    
     return aggregatedData;
   }
 
@@ -344,6 +353,96 @@ API Error: ${errorMessage}`);
       uniqueJobsCount: uniqueJobs.length,
       jettingJobsCount,
       totalJettingRevenue
+    };
+  }
+
+  /**
+   * Calculate Descaling Jobs Rate following the guide methodology:
+   * Descaling Jobs Rate = Descaling Jobs Performed ÷ Service Calls Performed
+   * 
+   * Step 1: Get unique jobs in date range
+   * Step 2: Count unique jobs that had descaling services (Line Item column R contains "desc")
+   * Step 3: Calculate percentage and revenue metrics
+   */
+  private calculateDescalingJobsFromGuide(soldLineItemsData: any[][], dateRange?: DateRange): {
+    descalingJobsPercentage: number;
+    descalingRevenuePerCall: number;
+    uniqueJobsCount: number;
+    descalingJobsCount: number;
+    totalDescalingRevenue: number;
+  } {
+    // Step 1: Get unique jobs in date range
+    const uniqueJobs = this.getUniqueJobsInDateRange(soldLineItemsData, dateRange);
+    
+    if (uniqueJobs.length === 0) {
+      return {
+        descalingJobsPercentage: 0,
+        descalingRevenuePerCall: 0,
+        uniqueJobsCount: 0,
+        descalingJobsCount: 0,
+        totalDescalingRevenue: 0
+      };
+    }
+    
+    // Step 2: Find unique jobs that had descaling services
+    // Check if ANY line item for each job contains "desc" in Line Item column (R)
+    const descalingJobNumbers = new Set<string>();
+    let totalDescalingRevenue = 0;
+    
+    // Calculate total descaling revenue from ALL descaling line items in date range
+    totalDescalingRevenue = soldLineItemsData
+      .filter(row => {
+        const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+        const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+        
+        // Check if date is in range (if specified) and line item contains "desc"
+        const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
+        const isDescalingItem = lineItem.includes('desc');
+        
+        return dateInRange && isDescalingItem;
+      })
+      .reduce((sum, row) => {
+        const price = this.parseNumber(row[19]); // Column T (Price)
+        return sum + price;
+      }, 0);
+    
+    for (const job of uniqueJobs) {
+      // Check all line items for this job to see if any contain "desc"
+      const jobLineItems = soldLineItemsData.filter(row => {
+        const rowJob = this.getString(row, 13); // Column N (Job)
+        const rowDate = parseDateFromRow(row, 1); // Column B (Invoice Date)
+        
+        // Check if job matches and date is in range (if specified)
+        const jobMatches = rowJob.trim() === job.trim();
+        const dateInRange = !dateRange || (rowDate && isDateInRange(rowDate, dateRange));
+        
+        return jobMatches && dateInRange;
+      });
+      
+      // Check if any line item for this job contains "desc" in Line Item column (R)
+      const hasDescalingService = jobLineItems.some(row => {
+        const lineItem = this.getString(row, 17).toLowerCase(); // Column R (Line Item)
+        return lineItem.includes('desc');
+      });
+      
+      if (hasDescalingService) {
+        descalingJobNumbers.add(job.trim());
+      }
+    }
+    
+    // Step 3: Calculate the KPIs
+    const descalingJobsCount = descalingJobNumbers.size;
+    const descalingJobsPercentage = uniqueJobs.length > 0 ? (descalingJobsCount / uniqueJobs.length) * 100 : 0;
+    
+    // Descaling Revenue per Service Call = Total Descaling Revenue ÷ Total Jobs Performed
+    const descalingRevenuePerCall = uniqueJobs.length > 0 ? totalDescalingRevenue / uniqueJobs.length : 0;
+    
+    return {
+      descalingJobsPercentage,
+      descalingRevenuePerCall,
+      uniqueJobsCount: uniqueJobs.length,
+      descalingJobsCount,
+      totalDescalingRevenue
     };
   }
 
