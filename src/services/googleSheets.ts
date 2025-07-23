@@ -225,6 +225,18 @@ export class MultiSheetService {
       console.log('Jetting Jobs Calculation (filtered):', {
         jettingJobsFromSoldLineItems: jettingJobs,
         jettingRevenueFromSoldLineItems: jettingRevenue,
+        jettingJobsDetails: soldLineItemsSheetData
+          .filter(row => {
+            const description = this.getString(row, 1).toLowerCase();
+            return description.includes('jetting') || description.includes('jet');
+          })
+          .map(row => ({
+            description: this.getString(row, 1),
+            revenueCol2: this.parseNumber(row[2]),
+            revenueCol3: this.parseNumber(row[3]),
+            usedRevenue: this.parseNumber(row[3]) || this.parseNumber(row[2]) || 0,
+            fullRow: row.slice(0, 5) // Show first 5 columns for context
+          })),
         jobsRevenueSheetRowCount,
         jettingJobsPercentage: aggregatedData.jettingJobsPercentage,
         jettingRevenuePerCall: aggregatedData.jettingRevenuePerCall,
