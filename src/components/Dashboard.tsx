@@ -251,7 +251,7 @@ export const Dashboard: React.FC = () => {
       value: kpiData.installRevenuePerCall,
       unit: '$',
       description: 'Total Install Revenue ($10k+ jobs from Column Y) / Total Number of Rows',
-      formula: '=SUMIFS(AC2:AC1000,AD2:AD1000,1) / COUNTA(AB2:AB1000) | Where AB=UNIQUE(FILTER(N2:N,(B2:B>=AA1)*(B2:B<=AA2))), AC=SUMIFS(T$2:T$10000,N$2:N$10000,AB2,B$2:B$10000,">="&$AA$1,B$2:B$10000,"<="&$AA$2), AD=IF(AC2>=10000,1,0)',
+      formula: 'Install Call Revenue Rate% = Sum of Install Jobs (≥10k) / Number of Service Calls',
       color: 'green' as const,
       trend: 'up' as const,
       trendValue: 12.8
