@@ -23,6 +23,8 @@ export class SupabaseService {
         startDate: dateRange.start.toISOString().split('T')[0],
         endDate: dateRange.end.toISOString().split('T')[0]
       });
+      console.log('Using Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      console.log('Table name:', this.tableName);
       
       // Add timeout to prevent hanging requests
       const timeoutPromise = new Promise((_, reject) => {
@@ -34,7 +36,7 @@ export class SupabaseService {
         console.log('Testing basic Supabase connection...');
         const connectionTest = supabase
           .from(this.tableName)
-          .select('count', { count: 'exact', head: true });
+          .select('"Primary Key"', { count: 'exact', head: true });
 
         const { count, error: countError } = await Promise.race([
           connectionTest,
@@ -457,19 +459,26 @@ export class SupabaseService {
 
   async testConnectionDetailed(): Promise<{ success: boolean; message: string; rowCount?: number }> {
     try {
+      console.log('🔍 Testing Supabase connection...');
+      console.log('Table name:', this.tableName);
+      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Connection test timeout')), 5000);
       });
       
-      // First try to get actual data instead of count
+      // Test with your exact table structure
       const dataTestPromise = supabase
         .from(this.tableName)
-        .select('"Primary Key"')
-        .limit(1);
+        .select('"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"')
+        .limit(5);
 
       const { data, error } = await Promise.race([dataTestPromise, timeoutPromise]) as any;
 
+      console.log('Query result:', { data: data?.length, error });
+      
       if (error) {
+        console.error('❌ Supabase error:', error);
         if (error.code === 'PGRST116') {
           return {
             success: false,
@@ -503,6 +512,7 @@ export class SupabaseService {
             };
           }
         } catch (countError) {
+          console.warn('Count query failed:', countError);
           console.warn('Could not get exact count, but table appears to have data');
         }
         
@@ -512,6 +522,9 @@ export class SupabaseService {
           rowCount: undefined
         };
       }
+      
+      console.log('✅ Sample data retrieved:', data.slice(0, 2));
+      console.log('Data structure:', Object.keys(data[0]));
       
       // Try to get approximate count
       let approximateCount = 'unknown';
