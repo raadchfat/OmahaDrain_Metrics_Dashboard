@@ -43,17 +43,54 @@ export class SupabaseService {
 
   // Calculate KPIs from SoldLineitems data
   private calculateKPIsFromSoldLineitems(data: any[]): KPIData {
+    console.log('=== DEBUGGING INSTALL CALL RATE ===');
+    console.log('Total rows received:', data.length);
+    
+    // Debug: Check sample data structure
+    if (data.length > 0) {
+      console.log('Sample row structure:', Object.keys(data[0]));
+      console.log('Sample row data:', data[0]);
+    }
+    
     const totalRevenue = data.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
+    
+    // Debug: Check Department column values
+    const departmentValues = data.map(row => row.Department).filter(Boolean);
+    console.log('Sample Department values:', [...new Set(departmentValues)].slice(0, 10));
+    
+    // Debug: Check Price column values
+    const priceValues = data.map(row => row.Price).filter(val => val !== null && val !== undefined);
+    console.log('Sample Price values:', priceValues.slice(0, 10));
+    console.log('Max price found:', Math.max(...priceValues.map(p => Number(p) || 0)));
     
     // Install calls: count of prices ≥$10k / count of all "drain cleaning" calls
     const drainCleaningCalls = data.filter(row => 
-      (row.Department || '').toLowerCase().includes('drain cleaning')
+      row.Department && row.Department.toLowerCase().includes('drain cleaning')
     );
-    const installCalls = data.filter(row => (Number(row.Price) || 0) >= 10000);
+    console.log('Drain cleaning calls found:', drainCleaningCalls.length);
+    
+    const installCalls = data.filter(row => {
+      const price = Number(row.Price) || 0;
+      return price >= 10000;
+    });
+    console.log('Install calls (≥$10k) found:', installCalls.length);
+    
+    // Debug: Show some examples
+    if (installCalls.length > 0) {
+      console.log('Sample install call:', {
+        price: installCalls[0].Price,
+        department: installCalls[0].Department,
+        lineItem: installCalls[0]['Line Item']
+      });
+    }
     
     const totalDrainCleaningCalls = drainCleaningCalls.length;
     const totalInstallCalls = installCalls.length;
-    const installRevenue = installJobs.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
+    const installRevenue = installCalls.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
+    
+    const installCallsPercentage = totalDrainCleaningCalls > 0 ? (totalInstallCalls / totalDrainCleaningCalls) * 100 : 0;
+    console.log('Install calls percentage calculated:', installCallsPercentage);
+    console.log('=== END DEBUGGING ===');
     
     // For other calculations, we'll use total jobs
     const totalJobs = new Set(data.map(row => row.Job)).size;
@@ -95,7 +132,7 @@ export class SupabaseService {
     const uniqueDiagnosticOnlyJobs = new Set(diagnosticOnlyJobs.map(row => row.Job)).size;
     
     return {
-      installCallsPercentage: totalDrainCleaningCalls > 0 ? (totalInstallCalls / totalDrainCleaningCalls) * 100 : 0,
+      installCallsPercentage: installCallsPercentage,
       installRevenuePerCall: totalDrainCleaningCalls > 0 ? installRevenue / totalDrainCleaningCalls : 0,
       jettingJobsPercentage: totalJobs > 0 ? (uniqueJettingJobs / totalJobs) * 100 : 0,
       jettingRevenuePerCall: totalJobs > 0 ? jettingRevenue / totalJobs : 0,

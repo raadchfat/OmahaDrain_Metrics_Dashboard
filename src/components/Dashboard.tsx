@@ -132,6 +132,11 @@ export const Dashboard: React.FC = () => {
         ]);
         
         console.log(`Successfully loaded data from Supabase table "${tableName}":`, { kpis, trendsLength: trends.length });
+        console.log('KPI values loaded:', {
+          installCallsPercentage: kpis.installCallsPercentage,
+          installRevenuePerCall: kpis.installRevenuePerCall,
+          totalRows: 'from Supabase query'
+        });
         
         setDebugInfo({
           dataSource: `Supabase Database`,
