@@ -5,7 +5,7 @@ import { isDateInRange } from '../utils/dateUtils'
 export class SupabaseService {
   private tableName: string;
   
-  constructor(tableName: string = 'your_table_name') {
+  constructor(tableName: string = 'SoldLineitems') {
     this.tableName = tableName;
   }
   
@@ -19,10 +19,9 @@ export class SupabaseService {
       const { data, error } = await supabase
         .from(this.tableName)
         .select('*')
-        .gte('date', dateRange.start.toISOString().split('T')[0])
-        .lte('date', dateRange.end.toISOString().split('T')[0])
-        .order('date', { ascending: false })
-        .limit(1)
+        .gte('Invoice Date', dateRange.start.toISOString().split('T')[0])
+        .lte('Invoice Date', dateRange.end.toISOString().split('T')[0])
+        .order('Invoice Date', { ascending: false })
 
       if (error) {
         console.error('Error fetching KPI data:', error)
@@ -34,68 +33,126 @@ export class SupabaseService {
         return this.getDefaultKPIData()
       }
 
-      const latestData = data[0]
-      
-      // Map your actual column names to the KPI data structure
-      return this.mapRowToKPIData(latestData)
+      // Calculate KPIs from the SoldLineitems data
+      return this.calculateKPIsFromSoldLineitems(data)
     } catch (error) {
       console.error('Error in getKPIData:', error)
       return this.getDefaultKPIData()
     }
   }
 
-  // Helper method to map your table columns to KPI data
-  private mapRowToKPIData(row: any): KPIData {
-    // TODO: Update this mapping to match your actual column names
+  // Calculate KPIs from SoldLineitems data
+  private calculateKPIsFromSoldLineitems(data: any[]): KPIData {
+    const totalJobs = new Set(data.map(row => row.Job)).size;
+    const totalRevenue = data.reduce((sum, row) => sum + (row.Price || 0), 0);
+    
+    // Install calls (jobs with revenue >= $10,000)
+    const installJobs = data.filter(row => (row.Price || 0) >= 10000);
+    const uniqueInstallJobs = new Set(installJobs.map(row => row.Job)).size;
+    const installRevenue = installJobs.reduce((sum, row) => sum + (row.Price || 0), 0);
+    
+    // Jetting jobs (line items containing "jetting" or similar)
+    const jettingItems = data.filter(row => 
+      (row['Line Item'] || '').toLowerCase().includes('jetting') ||
+      (row['Line Item'] || '').toLowerCase().includes('jet')
+    );
+    const uniqueJettingJobs = new Set(jettingItems.map(row => row.Job)).size;
+    const jettingRevenue = jettingItems.reduce((sum, row) => sum + (row.Price || 0), 0);
+    
+    // Descaling jobs
+    const descalingItems = data.filter(row => 
+      (row['Line Item'] || '').toLowerCase().includes('descaling') ||
+      (row['Line Item'] || '').toLowerCase().includes('descale')
+    );
+    const uniqueDescalingJobs = new Set(descalingItems.map(row => row.Job)).size;
+    const descalingRevenue = descalingItems.reduce((sum, row) => sum + (row.Price || 0), 0);
+    
+    // Membership data
+    const membershipItems = data.filter(row => 
+      (row['Line Item'] || '').toLowerCase().includes('membership') ||
+      (row['Member Status'] || '').toLowerCase().includes('member')
+    );
+    const totalCustomers = new Set(data.map(row => row['Customer ID'])).size;
+    
+    // Zero revenue calls
+    const zeroRevenueJobs = data.filter(row => (row.Price || 0) === 0);
+    const uniqueZeroRevenueJobs = new Set(zeroRevenueJobs.map(row => row.Job)).size;
+    
+    // Diagnostic fee only (assuming diagnostic fees are typically $100-300)
+    const diagnosticOnlyJobs = data.filter(row => {
+      const price = row.Price || 0;
+      return price > 0 && price <= 300 && 
+        ((row['Line Item'] || '').toLowerCase().includes('diagnostic') ||
+         (row['Line Item'] || '').toLowerCase().includes('service call'));
+    });
+    const uniqueDiagnosticOnlyJobs = new Set(diagnosticOnlyJobs.map(row => row.Job)).size;
+    
     return {
-      installCallsPercentage: row.install_calls_percentage || 0,
-      installRevenuePerCall: row.install_revenue_per_call || 0,
-      jettingJobsPercentage: row.jetting_jobs_percentage || 0,
-      jettingRevenuePerCall: row.jetting_revenue_per_call || 0,
-      descalingJobsPercentage: row.descaling_jobs_percentage || 0,
-      descalingRevenuePerCall: row.descaling_revenue_per_call || 0,
-      membershipConversionRate: row.membership_conversion_rate || 0,
-      totalMembershipsRenewed: row.total_memberships_renewed || 0,
-      techPayPercentage: row.tech_pay_percentage || 0,
-      laborRevenuePerHour: row.labor_revenue_per_hour || 0,
-      jobEfficiency: row.job_efficiency || 0,
-      zeroRevenueCallPercentage: row.zero_revenue_call_percentage || 0,
-      diagnosticFeeOnlyPercentage: row.diagnostic_fee_only_percentage || 0,
-      callbackPercentage: row.callback_percentage || 0,
-      clientComplaintPercentage: row.client_complaint_percentage || 0,
-      clientReviewPercentage: row.client_review_percentage || 0
+      installCallsPercentage: totalJobs > 0 ? (uniqueInstallJobs / totalJobs) * 100 : 0,
+      installRevenuePerCall: totalJobs > 0 ? installRevenue / totalJobs : 0,
+      jettingJobsPercentage: totalJobs > 0 ? (uniqueJettingJobs / totalJobs) * 100 : 0,
+      jettingRevenuePerCall: totalJobs > 0 ? jettingRevenue / totalJobs : 0,
+      descalingJobsPercentage: totalJobs > 0 ? (uniqueDescalingJobs / totalJobs) * 100 : 0,
+      descalingRevenuePerCall: totalJobs > 0 ? descalingRevenue / totalJobs : 0,
+      membershipConversionRate: totalCustomers > 0 ? (membershipItems.length / totalCustomers) * 100 : 0,
+      totalMembershipsRenewed: membershipItems.length,
+      techPayPercentage: 0, // Would need additional data to calculate
+      laborRevenuePerHour: 0, // Would need time tracking data
+      jobEfficiency: 0, // Would need time allocation data
+      zeroRevenueCallPercentage: totalJobs > 0 ? (uniqueZeroRevenueJobs / totalJobs) * 100 : 0,
+      diagnosticFeeOnlyPercentage: totalJobs > 0 ? (uniqueDiagnosticOnlyJobs / totalJobs) * 100 : 0,
+      callbackPercentage: 0, // Would need callback tracking data
+      clientComplaintPercentage: 0, // Would need complaint tracking data
+      clientReviewPercentage: 0 // Would need review tracking data
     }
   }
+  
   async getTimeSeriesData(dateRange: DateRange): Promise<TimeSeriesData[]> {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
         .select('*')
-        .gte('date', dateRange.start.toISOString().split('T')[0])
-        .lte('date', dateRange.end.toISOString().split('T')[0])
-        .order('date', { ascending: true })
+        .gte('Invoice Date', dateRange.start.toISOString().split('T')[0])
+        .lte('Invoice Date', dateRange.end.toISOString().split('T')[0])
+        .order('Invoice Date', { ascending: true })
 
       if (error) {
         console.error('Error fetching time series data:', error)
         throw error
       }
 
-      // Convert your data to time series format
-      return this.mapRowsToTimeSeriesData(data || [])
+      return this.calculateTimeSeriesFromSoldLineitems(data || [])
     } catch (error) {
       console.error('Error in getTimeSeriesData:', error)
       return []
     }
   }
 
-  // Helper method to convert your data to time series format
-  private mapRowsToTimeSeriesData(rows: any[]): TimeSeriesData[] {
-    // TODO: Update this to match how you want to create time series from your data
-    return rows.map(row => ({
-      date: row.date || row.created_at,
-      value: row.install_calls_percentage || 0, // Use whatever metric you want to trend
-      metric: 'install_calls'
-    }))
+  // Calculate time series data from SoldLineitems
+  private calculateTimeSeriesFromSoldLineitems(rows: any[]): TimeSeriesData[] {
+    // Group data by date and calculate daily metrics
+    const dailyData = new Map<string, any[]>();
+    
+    rows.forEach(row => {
+      const date = row['Invoice Date'];
+      if (!dailyData.has(date)) {
+        dailyData.set(date, []);
+      }
+      dailyData.get(date)!.push(row);
+    });
+    
+    // Calculate daily install call percentages
+    return Array.from(dailyData.entries()).map(([date, dayData]) => {
+      const totalJobs = new Set(dayData.map(row => row.Job)).size;
+      const installJobs = dayData.filter(row => (row.Price || 0) >= 10000);
+      const uniqueInstallJobs = new Set(installJobs.map(row => row.Job)).size;
+      
+      return {
+        date,
+        value: totalJobs > 0 ? (uniqueInstallJobs / totalJobs) * 100 : 0,
+        metric: 'install_calls_percentage'
+      };
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   // Method to get raw data from your table for inspection
@@ -104,7 +161,7 @@ export class SupabaseService {
       const { data, error } = await supabase
         .from(this.tableName)
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('Invoice Date', { ascending: false })
         .limit(limit)
 
       if (error) {
@@ -123,7 +180,7 @@ export class SupabaseService {
     try {
       const { data, error } = await supabase
         .from(this.tableName)
-        .select('count')
+        .select('"Primary Key"')
         .limit(1)
 
       return !error

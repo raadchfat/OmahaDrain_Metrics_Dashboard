@@ -15,6 +15,9 @@ export const SupabaseSettings: React.FC = () => {
     const savedTableName = localStorage.getItem('supabaseTableName');
     if (savedTableName) {
       setTableName(savedTableName);
+    } else {
+      // Set default to SoldLineitems
+      setTableName('SoldLineitems');
     }
   }, []);
 
@@ -24,13 +27,13 @@ export const SupabaseSettings: React.FC = () => {
     setConnectionMessage('');
 
     try {
-      const currentTableName = tableName || 'your_table_name';
+      const currentTableName = tableName || 'SoldLineitems';
       const supabaseService = new SupabaseService(currentTableName);
       const isConnected = await supabaseService.testConnection();
 
       if (isConnected) {
         setConnectionStatus('success');
-        setConnectionMessage(`Successfully connected to Supabase table "${currentTableName}"! Your database is ready to read.`);
+        setConnectionMessage(`Successfully connected to Supabase table "${currentTableName}"! Found your sold line items data and ready to calculate KPIs.`);
         
         // Fetch some sample data
         try {
@@ -95,7 +98,7 @@ export const SupabaseSettings: React.FC = () => {
                 value={tableName}
                 onChange={(e) => setTableName(e.target.value)}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="e.g., kpi_data, metrics, dashboard_data"
+                placeholder="SoldLineitems"
               />
               <button
                 onClick={handleTableNameSave}
@@ -106,7 +109,7 @@ export const SupabaseSettings: React.FC = () => {
               </button>
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              Enter the exact name of your existing Supabase table
+              Your table name is "SoldLineitems" - this will calculate KPIs from your sold line items data
             </p>
           </div>
         </div>

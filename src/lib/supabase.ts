@@ -13,21 +13,39 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type Database = {
   public: {
     Tables: {
-      // Replace 'your_table_name' with your actual table name
-      your_table_name: {
+      SoldLineitems: {
         Row: {
-          id: string
-          created_at: string
-          date: string
-          // Add your actual column names here
-          [key: string]: any
+          "Customer ID": number
+          "Invoice Date": string
+          "Customer": string | null
+          "Email": string | null
+          "Phone": string | null
+          "Location Name": string | null
+          "Street": string | null
+          "Apt/Suite": string | null
+          "City": string | null
+          "State": string | null
+          "Zip Code": number | null
+          "Member Status": string | null
+          "Invoice": number | null
+          "Job": string | null
+          "Opp. Owner": string | null
+          "Department": string | null
+          "Category": string | null
+          "Line Item": string | null
+          "Quantity": number | null
+          "Price": number | null
+          "Price Adjustment": string | null
+          "Price Adjusted At": string | null
+          "Price Adjusted By": string | null
+          "Original Price": string | null
+          "Adjusted Price": string | null
+          "Primary Key": string
         }
         Insert: {
-          // Not needed for read-only access
           [key: string]: any
         }
         Update: {
-          // Not needed for read-only access
           [key: string]: any
         }
       }
