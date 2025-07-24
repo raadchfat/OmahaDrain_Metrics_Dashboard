@@ -4,6 +4,7 @@ import { KPICard } from './charts/KPICard';
 import { TrendChart } from './charts/TrendChart';
 import { TimeFrameFilter } from './filters/TimeFrameFilter';
 import { MultiSheetService } from '../services/googleSheets';
+import { SupabaseService } from '../services/supabaseService';
 import { KPIData, TimeFrame, TimeSeriesData, MultiSheetConfig } from '../types';
 import { getDateRangeFromTimeFrame } from '../utils/dateUtils';
 
@@ -16,6 +17,7 @@ export const Dashboard: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error' | 'no-config'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [dataSource, setDataSource] = useState<'supabase' | 'sheets'>('supabase');
 
   useEffect(() => {
     loadData();
@@ -117,6 +119,43 @@ export const Dashboard: React.FC = () => {
     console.log('Dashboard loadData started for timeFrame:', timeFrame);
     
     try {
+      // Try Supabase first
+      try {
+        const supabaseService = new SupabaseService();
+        const dateRange = getDateRangeFromTimeFrame(timeFrame);
+        
+        console.log('Attempting to load data from Supabase...');
+        const [kpis, trends] = await Promise.all([
+          supabaseService.getKPIData(dateRange),
+          supabaseService.getTimeSeriesData(dateRange)
+        ]);
+        
+        console.log('Successfully loaded data from Supabase:', { kpis, trendsLength: trends.length });
+        
+        setDebugInfo({
+          dataSource: 'Supabase Database',
+          timeFrame: timeFrame,
+          dateRange: `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}`,
+          dataLoadedAt: new Date().toISOString(),
+          sampleKpiValues: {
+            installCallsPercentage: kpis.installCallsPercentage,
+            installRevenuePerCall: kpis.installRevenuePerCall,
+            totalMembershipsRenewed: kpis.totalMembershipsRenewed
+          }
+        });
+        
+        setKpiData(kpis);
+        setTrendData(trends);
+        setIsLoading(false);
+        setConnectionStatus('success');
+        setConnectionMessage(`Successfully loaded data from Supabase database for ${timeFrame}!`);
+        setDataSource('supabase');
+        console.log('Supabase data loading completed successfully');
+        return;
+      } catch (supabaseError) {
+        console.warn('Failed to load data from Supabase, trying Google Sheets:', supabaseError);
+      }
+      
       // Load configuration from localStorage
       const savedConfig = localStorage.getItem('multiSheetConfig');
       let config: MultiSheetConfig;
@@ -170,7 +209,8 @@ export const Dashboard: React.FC = () => {
           setTrendData(trends);
           setIsLoading(false);
           setConnectionStatus('success');
-          setConnectionMessage(`Successfully loaded data from Google Sheets for ${timeFrame}!`);
+          setConnectionMessage(`Successfully loaded data from Google Sheets for ${timeFrame}! (Supabase not available)`);
+          setDataSource('sheets');
           console.log('Dashboard data loading completed successfully');
           return;
         } catch (savedConfigError) {
@@ -179,20 +219,18 @@ export const Dashboard: React.FC = () => {
           // Set error status to show in UI
           setConnectionStatus('error');
           const errorMsg = savedConfigError instanceof Error ? savedConfigError.message : 'Unknown error';
-          setConnectionMessage(`Failed to load data from Google Sheets: ${errorMsg}. Displaying demo data instead. Please check your API configuration.`);
+          setConnectionMessage(`Failed to load data from both Supabase and Google Sheets: ${errorMsg}. Displaying demo data instead.`);
         }
       } else {
-        console.log('No saved config found, using demo data');
+        console.log('No saved config found and Supabase not available, using demo data');
       }
       
       // Set debug info for demo data
       setDebugInfo({
-        sheetsConfigured: 0,
-        activeSheets: 0,
-        dataLoadedAt: new Date().toISOString(),
-        kpiDataSource: 'Demo Data',
+        dataSource: 'Demo Data',
         timeFrame: timeFrame,
-        note: 'Using fallback demo data'
+        dataLoadedAt: new Date().toISOString(),
+        note: 'Using fallback demo data - connect to Supabase or configure Google Sheets'
       });
       
       // Fallback to demo configuration
@@ -220,13 +258,14 @@ export const Dashboard: React.FC = () => {
       console.log('Demo data loaded:', { kpis, trendsLength: trends.length });
       setKpiData(kpis);
       setTrendData(trends);
+      setDataSource('sheets');
     } catch (error) {
       console.error('Error loading data:', error);
       
       // Set error status for complete failure
       setConnectionStatus('error');
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      setConnectionMessage(`Unable to load any data: ${errorMsg}. Using fallback demo data.`);
+      setConnectionMessage(`Unable to load any data: ${errorMsg}. Please connect to Supabase or configure Google Sheets.`);
       
       // Set fallback data to prevent complete failure
       setKpiData({
@@ -477,11 +516,12 @@ export const Dashboard: React.FC = () => {
       {debugInfo && (
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <h3 className="font-medium text-gray-900 mb-2">Debug Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="font-medium text-gray-600">Data Source:</span>
-              <p className={debugInfo.kpiDataSource === 'Google Sheets' ? 'text-green-600' : 'text-orange-600'}>
-                {debugInfo.kpiDataSource}
+              <p className={debugInfo.dataSource === 'Supabase Database' ? 'text-green-600' : 
+                           debugInfo.dataSource === 'Google Sheets' ? 'text-blue-600' : 'text-orange-600'}>
+                {debugInfo.dataSource}
               </p>
             </div>
             <div>
@@ -489,16 +529,14 @@ export const Dashboard: React.FC = () => {
               <p className="text-gray-900 capitalize">{debugInfo.timeFrame}</p>
             </div>
             <div>
-              <span className="font-medium text-gray-600">Sheets Configured:</span>
-              <p className="text-gray-900">{debugInfo.sheetsConfigured}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-600">Active Sheets:</span>
-              <p className="text-gray-900">{debugInfo.activeSheets}</p>
-            </div>
-            <div>
               <span className="font-medium text-gray-600">Last Updated:</span>
               <p className="text-gray-900">{new Date(debugInfo.dataLoadedAt).toLocaleTimeString()}</p>
+            </div>
+            <div>
+              <span className="font-medium text-gray-600">Status:</span>
+              <p className={dataSource === 'supabase' ? 'text-green-600' : 'text-blue-600'}>
+                {dataSource === 'supabase' ? 'Database Connected' : 'Sheets Mode'}
+              </p>
             </div>
           </div>
           {debugInfo.dateRange && (
@@ -522,7 +560,15 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
           )}
-          {debugInfo.kpiDataSource === 'Google Sheets' && (
+          {debugInfo.dataSource === 'Supabase Database' && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="flex items-center gap-2 text-sm text-green-700">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="font-medium">Real-time data from your Supabase database is now active for {timeFrame}!</span>
+              </div>
+            </div>
+          )}
+          {debugInfo.dataSource === 'Google Sheets' && (
             <div className="mt-3 pt-3 border-t border-gray-200">
               <div className="flex items-center gap-2 text-sm text-green-700">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -552,12 +598,12 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TrendChart
           data={trendData}
-          title="Live Install Calls Trend (From Your Sheets)"
+          title={`Live Install Calls Trend (${dataSource === 'supabase' ? 'From Supabase' : 'From Your Sheets'})`}
           color="#3B82F6"
         />
         <TrendChart
           data={trendData.map(d => ({ ...d, value: d.value * 0.7 + 15 }))}
-          title="Live Revenue Efficiency (From Your Sheets)"
+          title={`Live Revenue Efficiency (${dataSource === 'supabase' ? 'From Supabase' : 'From Your Sheets'})`}
           color="#10B981"
         />
       </div>

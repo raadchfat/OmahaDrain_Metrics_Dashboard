@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, TestTube, Key, Database, Clock, AlertCircle, Plus, Trash2, Edit3, ToggleLeft, ToggleRight } from 'lucide-react';
 import { GoogleSheetConfig, MultiSheetConfig } from '../types';
+import { SupabaseSettings } from './SupabaseSettings';
 
 export const Settings: React.FC = () => {
   const [config, setConfig] = useState<MultiSheetConfig>({
@@ -116,8 +117,11 @@ export const Settings: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600">Configure your Google Sheets integration and manage multiple data sources</p>
+        <p className="text-gray-600">Configure your data sources and database connections</p>
       </div>
+
+      {/* Supabase Settings */}
+      <SupabaseSettings />
 
       {/* Global API Key */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
