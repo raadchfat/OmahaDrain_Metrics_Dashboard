@@ -10,6 +10,7 @@ interface KPICardProps {
   trend?: 'up' | 'down' | 'neutral';
   trendValue?: number;
   color?: 'blue' | 'green' | 'orange' | 'red' | 'purple';
+  scoreRanges?: { min: number; max: number; score: number }[];
 }
 
 const colorClasses = {
@@ -20,6 +21,17 @@ const colorClasses = {
   purple: 'bg-purple-500'
 };
 
+const getScoreFromValue = (value: number, scoreRanges?: { min: number; max: number; score: number }[]): number => {
+  if (!scoreRanges) return 0;
+  
+  for (const range of scoreRanges) {
+    if (value >= range.min && (range.max === Infinity || value < range.max)) {
+      return range.score;
+    }
+  }
+  
+  return 0;
+};
 export const KPICard: React.FC<KPICardProps> = ({
   title,
   value,
@@ -28,8 +40,11 @@ export const KPICard: React.FC<KPICardProps> = ({
   formula,
   trend = 'neutral',
   trendValue,
-  color = 'blue'
+  color = 'blue',
+  scoreRanges
 }) => {
+  const score = getScoreFromValue(value, scoreRanges);
+  
   const formatValue = (val: number) => {
     if (unit === '$') {
       return val.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -70,6 +85,11 @@ export const KPICard: React.FC<KPICardProps> = ({
               </div>
             )}
           </div>
+          {scoreRanges && score > 0 && (
+            <div className="mt-2">
+              <span className="text-xs font-bold text-gray-600">Score = {score}</span>
+            </div>
+          )}
         </div>
         <div className={`w-4 h-16 rounded-full ${colorClasses[color]}`}></div>
       </div>
@@ -79,6 +99,28 @@ export const KPICard: React.FC<KPICardProps> = ({
           <p className="text-xs text-gray-500 font-mono leading-relaxed">
             <span className="font-semibold text-gray-600">Formula:</span> {formula}
           </p>
+        </div>
+      )}
+      
+      {scoreRanges && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="text-xs text-gray-500">
+            <div className="font-semibold text-gray-600 mb-2">Scoring Guide:</div>
+            <div className="grid grid-cols-2 gap-1 text-xs">
+              {scoreRanges.map((range, index) => (
+                <div key={index} className={`flex justify-between px-1 py-0.5 rounded ${
+                  range.score === score ? 'bg-blue-100 text-blue-800 font-bold' : ''
+                }`}>
+                  <span>{range.score}</span>
+                  <span>
+                    {range.min === 0 ? 'Less than' : range.min + (unit === '%' ? '%' : '')}
+                    {range.max !== Infinity && range.min !== 0 ? ` – ${range.max - 0.01}${unit}` : 
+                     range.max === Infinity ? `${unit} or higher` : ` ${range.max}${unit}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -325,7 +325,19 @@ export const Dashboard: React.FC = () => {
       formula: 'Install Call Rate% = Count of Install Jobs (≥10k) / Number of Service Calls',
       color: 'blue' as const,
       trend: 'up' as const,
-      trendValue: 5.2
+      trendValue: 5.2,
+      scoreRanges: [
+        { min: 0, max: 1, score: 1 },
+        { min: 1, max: 2, score: 2 },
+        { min: 2, max: 3, score: 3 },
+        { min: 3, max: 4, score: 4 },
+        { min: 4, max: 5, score: 5 },
+        { min: 5, max: 6, score: 6 },
+        { min: 6, max: 7, score: 7 },
+        { min: 7, max: 8, score: 8 },
+        { min: 8, max: 10, score: 9 },
+        { min: 10, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Install Revenue per Call',
