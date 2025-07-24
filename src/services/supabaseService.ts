@@ -332,6 +332,24 @@ export class SupabaseService {
     }
   }
 
+  async getTotalCount(): Promise<{ count: number }> {
+    try {
+      const { count, error } = await supabase
+        .from(this.tableName)
+        .select('*', { count: 'exact', head: true })
+
+      if (error) {
+        console.error('Error getting total count:', error)
+        throw error
+      }
+
+      return { count: count || 0 }
+    } catch (error) {
+      console.error('Error in getTotalCount:', error)
+      throw error
+    }
+  }
+
   private getDefaultKPIData(): KPIData {
     return {
       installCallsPercentage: 0,
