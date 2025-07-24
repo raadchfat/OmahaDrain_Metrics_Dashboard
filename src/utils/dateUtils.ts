@@ -2,13 +2,14 @@ import { TimeFrame, DateRange } from '../types';
 
 export function getDateRangeFromTimeFrame(timeFrame: TimeFrame): DateRange {
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // Set to start of day in local timezone
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
   
   switch (timeFrame) {
     case 'today':
       return {
         start: today,
-        end: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) // End of today
+        end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
       };
       
     case 'yesterday':
@@ -16,78 +17,84 @@ export function getDateRangeFromTimeFrame(timeFrame: TimeFrame): DateRange {
       yesterday.setDate(yesterday.getDate() - 1);
       return {
         start: yesterday,
-        end: new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1) // End of yesterday
+        end: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999)
       };
       
     case 'week':
-      // Find the most recent Monday (start of work week)
-      const currentDayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-      const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; // If Sunday, go back 6 days to Monday
+      // Current week (Monday to Sunday)
+      const currentDayOfWeek = today.getDay();
+      const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
       const weekStart = new Date(today);
       weekStart.setDate(weekStart.getDate() - daysFromMonday);
+      weekStart.setHours(0, 0, 0, 0);
       
-      // End of work week is Sunday
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6); // Sunday is 6 days after Monday
+      const weekEnd = new Date(today);
+      weekEnd.setHours(23, 59, 59, 999);
       
       return {
         start: weekStart,
-        end: new Date(weekEnd.getTime() + 24 * 60 * 60 * 1000 - 1) // End of Sunday
+        end: weekEnd
       };
       
     case 'lastweek':
-      // Find last Monday-Sunday work week
+      // Last complete week (Monday to Sunday)
       const lastWeekCurrentDay = today.getDay();
-      const daysFromLastMonday = lastWeekCurrentDay === 0 ? 13 : lastWeekCurrentDay + 6; // If Sunday, go back 13 days; otherwise go back to previous Monday
+      const daysFromLastMonday = lastWeekCurrentDay === 0 ? 13 : lastWeekCurrentDay + 6;
       const lastWeekStart = new Date(today);
       lastWeekStart.setDate(lastWeekStart.getDate() - daysFromLastMonday);
+      lastWeekStart.setHours(0, 0, 0, 0);
       
-      // End of last work week is Sunday
       const lastWeekEnd = new Date(lastWeekStart);
-      lastWeekEnd.setDate(lastWeekEnd.getDate() + 6); // Sunday is 6 days after Monday
+      lastWeekEnd.setDate(lastWeekEnd.getDate() + 6);
+      lastWeekEnd.setHours(23, 59, 59, 999);
       
       return {
         start: lastWeekStart,
-        end: new Date(lastWeekEnd.getTime() + 24 * 60 * 60 * 1000 - 1) // End of Sunday
+        end: lastWeekEnd
       };
       
     case 'month':
-      // Current month from 1st to today
+      // Current month from 1st to now
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       return {
         start: monthStart,
-        end: today
+        end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
       };
       
     case 'quarter':
+      // Last 90 days
       const quarterStart = new Date(today);
       quarterStart.setDate(quarterStart.getDate() - 90);
+      quarterStart.setHours(0, 0, 0, 0);
       return {
         start: quarterStart,
-        end: today
+        end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
       };
       
     case 'year':
+      // Last 365 days
       const yearStart = new Date(today);
-      yearStart.setFullYear(yearStart.getFullYear() - 1);
+      yearStart.setDate(yearStart.getDate() - 365);
+      yearStart.setHours(0, 0, 0, 0);
       return {
         start: yearStart,
-        end: today
+        end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
       };
       
     case 'custom':
-      // For custom, return last 30 days as default
+      // Last 30 days as default
       const customStart = new Date(today);
       customStart.setDate(customStart.getDate() - 30);
+      customStart.setHours(0, 0, 0, 0);
       return {
         start: customStart,
-        end: today
+        end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
       };
       
     default:
       return {
         start: today,
-        end: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        end: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
       };
   }
 }
