@@ -53,40 +53,104 @@ export class SupabaseService {
               'Invoice Date': row['Invoice Date'],
               'Invoice Date type': typeof row['Invoice Date']
             })));
+            
+            // Check if we have any recent data at all
+            const hasRecentData = allData.some(row => {
+              const invoiceDate = new Date(row['Invoice Date']);
+              const thirtyDaysAgo = new Date();
+              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+              return invoiceDate >= thirtyDaysAgo;
+            });
+            console.log('Has data from last 30 days:', hasRecentData);
           }
         }
       } catch (sampleError) {
         console.warn('Could not fetch sample data:', sampleError);
       }
       
-      // Main data query with timeout
-      const mainDataPromise = supabase
-        .from(this.tableName)
-        .select('*')
-        .gte('Invoice Date', dateRange.start.toISOString().split('T')[0])
-        .lte('Invoice Date', dateRange.end.toISOString().split('T')[0])
-        .order('Invoice Date', { ascending: false });
+      // Try multiple date filtering approaches
+      let data = null;
+      let error = null;
+      
+      // Approach 1: Standard date filtering
+      try {
+        console.log('Trying standard date filtering...');
+        const standardPromise = supabase
+          .from(this.tableName)
+          .select('*')
+          .gte('Invoice Date', dateRange.start.toISOString().split('T')[0])
+          .lte('Invoice Date', dateRange.end.toISOString().split('T')[0])
+          .order('Invoice Date', { ascending: false });
 
-      const { data, error } = await Promise.race([
-        mainDataPromise,
-        timeoutPromise
-      ]) as any;
+        const result = await Promise.race([standardPromise, timeoutPromise]) as any;
+        data = result.data;
+        error = result.error;
+        
+        if (data && data.length > 0) {
+          console.log('Standard date filtering worked! Found', data.length, 'rows');
+        } else {
+          console.log('Standard date filtering returned no results');
+        }
+      } catch (standardError) {
+        console.warn('Standard date filtering failed:', standardError);
+      }
+      
+      // Approach 2: If no data found, try with different date formats
+      if (!data || data.length === 0) {
+        try {
+          console.log('Trying alternative date filtering...');
+          const altPromise = supabase
+            .from(this.tableName)
+            .select('*')
+            .gte('Invoice Date', dateRange.start.toISOString())
+            .lte('Invoice Date', dateRange.end.toISOString())
+            .order('Invoice Date', { ascending: false });
 
+          const altResult = await Promise.race([altPromise, timeoutPromise]) as any;
+          if (altResult.data && altResult.data.length > 0) {
+            data = altResult.data;
+            error = altResult.error;
+            console.log('Alternative date filtering worked! Found', data.length, 'rows');
+          }
+        } catch (altError) {
+          console.warn('Alternative date filtering failed:', altError);
+        }
+      }
+      
+      // Approach 3: If still no data, try broader date range
+      if (!data || data.length === 0) {
+        try {
+          console.log('Trying broader date range (last 90 days)...');
+          const ninetyDaysAgo = new Date();
+          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+          
+          const broadPromise = supabase
+            .from(this.tableName)
+            .select('*')
+            .gte('Invoice Date', ninetyDaysAgo.toISOString().split('T')[0])
+            .order('Invoice Date', { ascending: false });
+
+          const broadResult = await Promise.race([broadPromise, timeoutPromise]) as any;
+          if (broadResult.data && broadResult.data.length > 0) {
+            data = broadResult.data;
+            error = broadResult.error;
+            console.log('Broader date range worked! Found', data.length, 'rows');
+          }
+        } catch (broadError) {
+          console.warn('Broader date filtering failed:', broadError);
+        }
+      }
       if (error) {
         console.error('Error fetching KPI data:', error);
-        // Don't throw immediately, try fallback
       }
 
       console.log('Filtered data result:', {
         rowsFound: data?.length || 0,
-        dateFilter: {
-          gte: dateRange.start.toISOString().split('T')[0],
-          lte: dateRange.end.toISOString().split('T')[0]
-        }
+        requestedDateRange: `${dateRange.start.toISOString().split('T')[0]} to ${dateRange.end.toISOString().split('T')[0]}`
       });
       
       if (!data || data.length === 0) {
-        console.warn('No data found in date range, trying without date filter...')
+        console.warn('No data found with any date filtering approach, trying without date filter...')
         
         try {
           // Try without date filtering to see if we can get any data
@@ -107,18 +171,24 @@ export class SupabaseService {
           }
           
           if (fallbackData && fallbackData.length > 0) {
-            console.log('Found data without date filter, using all available data for calculation');
+            console.log('✅ Found data without date filter! Using all available data for calculation');
             console.log('Total rows found:', fallbackData.length);
+            console.log('Date range in data:', {
+              earliest: fallbackData[fallbackData.length - 1]?.['Invoice Date'],
+              latest: fallbackData[0]?.['Invoice Date']
+            });
             return this.calculateKPIsFromSoldLineitems(fallbackData);
           }
         } catch (fallbackError) {
           console.error('Fallback query failed:', fallbackError);
         }
         
+        console.error('❌ No data found at all - check your Supabase connection and table name');
         return this.getDefaultKPIData();
       }
 
       // Calculate KPIs from the SoldLineitems data
+      console.log('✅ Using filtered data for KPI calculation');
       return this.calculateKPIsFromSoldLineitems(data);
     } catch (error) {
       console.error('Error in getKPIData:', error);
