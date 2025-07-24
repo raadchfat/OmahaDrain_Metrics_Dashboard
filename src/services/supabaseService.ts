@@ -3,10 +3,21 @@ import { KPIData, TimeSeriesData, DateRange } from '../types'
 import { isDateInRange } from '../utils/dateUtils'
 
 export class SupabaseService {
+  private tableName: string;
+  
+  constructor(tableName: string = 'your_table_name') {
+    this.tableName = tableName;
+  }
+  
+  // Method to set the table name dynamically
+  setTableName(tableName: string) {
+    this.tableName = tableName;
+  }
+
   async getKPIData(dateRange: DateRange): Promise<KPIData> {
     try {
       const { data, error } = await supabase
-        .from('kpi_data')
+        .from(this.tableName)
         .select('*')
         .gte('date', dateRange.start.toISOString().split('T')[0])
         .lte('date', dateRange.end.toISOString().split('T')[0])
@@ -19,39 +30,46 @@ export class SupabaseService {
       }
 
       if (!data || data.length === 0) {
-        // Return default values if no data found
+        console.warn('No data found in date range, returning default values')
         return this.getDefaultKPIData()
       }
 
       const latestData = data[0]
-      return {
-        installCallsPercentage: latestData.install_calls_percentage,
-        installRevenuePerCall: latestData.install_revenue_per_call,
-        jettingJobsPercentage: latestData.jetting_jobs_percentage,
-        jettingRevenuePerCall: latestData.jetting_revenue_per_call,
-        descalingJobsPercentage: latestData.descaling_jobs_percentage,
-        descalingRevenuePerCall: latestData.descaling_revenue_per_call,
-        membershipConversionRate: latestData.membership_conversion_rate,
-        totalMembershipsRenewed: latestData.total_memberships_renewed,
-        techPayPercentage: latestData.tech_pay_percentage,
-        laborRevenuePerHour: latestData.labor_revenue_per_hour,
-        jobEfficiency: latestData.job_efficiency,
-        zeroRevenueCallPercentage: latestData.zero_revenue_call_percentage,
-        diagnosticFeeOnlyPercentage: latestData.diagnostic_fee_only_percentage,
-        callbackPercentage: latestData.callback_percentage,
-        clientComplaintPercentage: latestData.client_complaint_percentage,
-        clientReviewPercentage: latestData.client_review_percentage
-      }
+      
+      // Map your actual column names to the KPI data structure
+      return this.mapRowToKPIData(latestData)
     } catch (error) {
       console.error('Error in getKPIData:', error)
       return this.getDefaultKPIData()
     }
   }
 
+  // Helper method to map your table columns to KPI data
+  private mapRowToKPIData(row: any): KPIData {
+    // TODO: Update this mapping to match your actual column names
+    return {
+      installCallsPercentage: row.install_calls_percentage || 0,
+      installRevenuePerCall: row.install_revenue_per_call || 0,
+      jettingJobsPercentage: row.jetting_jobs_percentage || 0,
+      jettingRevenuePerCall: row.jetting_revenue_per_call || 0,
+      descalingJobsPercentage: row.descaling_jobs_percentage || 0,
+      descalingRevenuePerCall: row.descaling_revenue_per_call || 0,
+      membershipConversionRate: row.membership_conversion_rate || 0,
+      totalMembershipsRenewed: row.total_memberships_renewed || 0,
+      techPayPercentage: row.tech_pay_percentage || 0,
+      laborRevenuePerHour: row.labor_revenue_per_hour || 0,
+      jobEfficiency: row.job_efficiency || 0,
+      zeroRevenueCallPercentage: row.zero_revenue_call_percentage || 0,
+      diagnosticFeeOnlyPercentage: row.diagnostic_fee_only_percentage || 0,
+      callbackPercentage: row.callback_percentage || 0,
+      clientComplaintPercentage: row.client_complaint_percentage || 0,
+      clientReviewPercentage: row.client_review_percentage || 0
+    }
+  }
   async getTimeSeriesData(dateRange: DateRange): Promise<TimeSeriesData[]> {
     try {
       const { data, error } = await supabase
-        .from('time_series_data')
+        .from(this.tableName)
         .select('*')
         .gte('date', dateRange.start.toISOString().split('T')[0])
         .lte('date', dateRange.end.toISOString().split('T')[0])
@@ -62,69 +80,41 @@ export class SupabaseService {
         throw error
       }
 
-      return data?.map(row => ({
-        date: row.date,
-        value: row.value,
-        metric: row.metric
-      })) || []
+      // Convert your data to time series format
+      return this.mapRowsToTimeSeriesData(data || [])
     } catch (error) {
       console.error('Error in getTimeSeriesData:', error)
       return []
     }
   }
 
-  async insertKPIData(date: string, kpiData: KPIData): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('kpi_data')
-        .insert({
-          date,
-          install_calls_percentage: kpiData.installCallsPercentage,
-          install_revenue_per_call: kpiData.installRevenuePerCall,
-          jetting_jobs_percentage: kpiData.jettingJobsPercentage,
-          jetting_revenue_per_call: kpiData.jettingRevenuePerCall,
-          descaling_jobs_percentage: kpiData.descalingJobsPercentage,
-          descaling_revenue_per_call: kpiData.descalingRevenuePerCall,
-          membership_conversion_rate: kpiData.membershipConversionRate,
-          total_memberships_renewed: kpiData.totalMembershipsRenewed,
-          tech_pay_percentage: kpiData.techPayPercentage,
-          labor_revenue_per_hour: kpiData.laborRevenuePerHour,
-          job_efficiency: kpiData.jobEfficiency,
-          zero_revenue_call_percentage: kpiData.zeroRevenueCallPercentage,
-          diagnostic_fee_only_percentage: kpiData.diagnosticFeeOnlyPercentage,
-          callback_percentage: kpiData.callbackPercentage,
-          client_complaint_percentage: kpiData.clientComplaintPercentage,
-          client_review_percentage: kpiData.clientReviewPercentage
-        })
-
-      if (error) {
-        console.error('Error inserting KPI data:', error)
-        throw error
-      }
-    } catch (error) {
-      console.error('Error in insertKPIData:', error)
-      throw error
-    }
+  // Helper method to convert your data to time series format
+  private mapRowsToTimeSeriesData(rows: any[]): TimeSeriesData[] {
+    // TODO: Update this to match how you want to create time series from your data
+    return rows.map(row => ({
+      date: row.date || row.created_at,
+      value: row.install_calls_percentage || 0, // Use whatever metric you want to trend
+      metric: 'install_calls'
+    }))
   }
 
-  async insertTimeSeriesData(timeSeriesData: TimeSeriesData[]): Promise<void> {
+  // Method to get raw data from your table for inspection
+  async getRawData(limit: number = 100): Promise<any[]> {
     try {
-      const { error } = await supabase
-        .from('time_series_data')
-        .insert(
-          timeSeriesData.map(data => ({
-            date: data.date,
-            metric: data.metric,
-            value: data.value
-          }))
-        )
+      const { data, error } = await supabase
+        .from(this.tableName)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit)
 
       if (error) {
-        console.error('Error inserting time series data:', error)
+        console.error('Error fetching raw data:', error)
         throw error
       }
+
+      return data || []
     } catch (error) {
-      console.error('Error in insertTimeSeriesData:', error)
+      console.error('Error in getRawData:', error)
       throw error
     }
   }
@@ -132,7 +122,7 @@ export class SupabaseService {
   async testConnection(): Promise<boolean> {
     try {
       const { data, error } = await supabase
-        .from('kpi_data')
+        .from(this.tableName)
         .select('count')
         .limit(1)
 

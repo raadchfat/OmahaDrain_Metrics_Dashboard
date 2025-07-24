@@ -9,96 +9,26 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Database types will be generated automatically
+// Database types - update these to match your actual table structure
 export type Database = {
   public: {
     Tables: {
-      kpi_data: {
+      // Replace 'your_table_name' with your actual table name
+      your_table_name: {
         Row: {
           id: string
           created_at: string
           date: string
-          install_calls_percentage: number
-          install_revenue_per_call: number
-          jetting_jobs_percentage: number
-          jetting_revenue_per_call: number
-          descaling_jobs_percentage: number
-          descaling_revenue_per_call: number
-          membership_conversion_rate: number
-          total_memberships_renewed: number
-          tech_pay_percentage: number
-          labor_revenue_per_hour: number
-          job_efficiency: number
-          zero_revenue_call_percentage: number
-          diagnostic_fee_only_percentage: number
-          callback_percentage: number
-          client_complaint_percentage: number
-          client_review_percentage: number
+          // Add your actual column names here
+          [key: string]: any
         }
         Insert: {
-          id?: string
-          created_at?: string
-          date: string
-          install_calls_percentage: number
-          install_revenue_per_call: number
-          jetting_jobs_percentage: number
-          jetting_revenue_per_call: number
-          descaling_jobs_percentage: number
-          descaling_revenue_per_call: number
-          membership_conversion_rate: number
-          total_memberships_renewed: number
-          tech_pay_percentage: number
-          labor_revenue_per_hour: number
-          job_efficiency: number
-          zero_revenue_call_percentage: number
-          diagnostic_fee_only_percentage: number
-          callback_percentage: number
-          client_complaint_percentage: number
-          client_review_percentage: number
+          // Not needed for read-only access
+          [key: string]: any
         }
         Update: {
-          id?: string
-          created_at?: string
-          date?: string
-          install_calls_percentage?: number
-          install_revenue_per_call?: number
-          jetting_jobs_percentage?: number
-          jetting_revenue_per_call?: number
-          descaling_jobs_percentage?: number
-          descaling_revenue_per_call?: number
-          membership_conversion_rate?: number
-          total_memberships_renewed?: number
-          tech_pay_percentage?: number
-          labor_revenue_per_hour?: number
-          job_efficiency?: number
-          zero_revenue_call_percentage?: number
-          diagnostic_fee_only_percentage?: number
-          callback_percentage?: number
-          client_complaint_percentage?: number
-          client_review_percentage?: number
-        }
-      }
-      time_series_data: {
-        Row: {
-          id: string
-          created_at: string
-          date: string
-          metric: string
-          value: number
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          date: string
-          metric: string
-          value: number
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          date?: string
-          metric?: string
-          value?: number
+          // Not needed for read-only access
+          [key: string]: any
         }
       }
     }
