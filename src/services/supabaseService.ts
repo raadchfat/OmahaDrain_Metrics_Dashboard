@@ -63,12 +63,10 @@ export class SupabaseService {
     console.log('Sample Price values:', priceValues.slice(0, 10));
     console.log('Max price found:', Math.max(...priceValues.map(p => Number(p) || 0)));
     
-    // Install calls: count of prices ≥$10k / count of all "drain cleaning" calls
+    // Install calls: count of prices ≥$10k / count of all "Drain Cleaning" calls (exact match)
     const drainCleaningCalls = data.filter(row => {
       const dept = row.Department;
-      if (!dept) return false;
-      const deptLower = dept.toLowerCase();
-      return deptLower.includes('drain') && deptLower.includes('cleaning');
+      return dept === 'Drain Cleaning';
     });
     console.log('Drain cleaning calls found:', drainCleaningCalls.length);
     
