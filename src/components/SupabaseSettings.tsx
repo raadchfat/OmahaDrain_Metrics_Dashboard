@@ -29,23 +29,25 @@ export const SupabaseSettings: React.FC = () => {
     try {
       const currentTableName = tableName || 'SoldLineitems';
       const supabaseService = new SupabaseService(currentTableName);
-      const isConnected = await supabaseService.testConnection();
+      const result = await supabaseService.testConnectionDetailed();
 
-      if (isConnected) {
+      if (result.success) {
         setConnectionStatus('success');
-        setConnectionMessage(`Successfully connected to Supabase table "${currentTableName}"! Found your sold line items data and ready to calculate KPIs.`);
+        setConnectionMessage(result.message);
         
-        // Fetch some sample data
-        try {
-          const sampleData = await supabaseService.getRawData(5);
-          setRawData(sampleData);
-          setShowRawData(true);
-        } catch (error) {
-          console.warn('Could not fetch sample data:', error);
+        // Only fetch sample data if we have rows
+        if (result.rowCount && result.rowCount > 0) {
+          try {
+            const sampleData = await supabaseService.getRawData(5);
+            setRawData(sampleData);
+            setShowRawData(true);
+          } catch (error) {
+            console.warn('Could not fetch sample data:', error);
+          }
         }
       } else {
         setConnectionStatus('error');
-        setConnectionMessage(`Failed to connect to table "${currentTableName}". Please check your table name and configuration.`);
+        setConnectionMessage(result.message);
       }
     } catch (error) {
       setConnectionStatus('error');

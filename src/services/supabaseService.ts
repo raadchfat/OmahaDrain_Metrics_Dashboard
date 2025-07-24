@@ -29,11 +29,40 @@ export class SupabaseService {
         setTimeout(() => reject(new Error('Request timeout')), 10000);
       });
 
-      // First, let's see what data exists without date filtering
+      // First, test basic connection and check if table exists
       try {
+        console.log('Testing basic Supabase connection...');
+        const connectionTest = supabase
+          .from(this.tableName)
+          .select('count', { count: 'exact', head: true });
+
+        const { count, error: countError } = await Promise.race([
+          connectionTest,
+          timeoutPromise
+        ]) as any;
+
+        if (countError) {
+          console.error('❌ Table access error:', countError);
+          if (countError.code === 'PGRST116') {
+            throw new Error(`Table "${this.tableName}" does not exist. Please check your table name in Settings.`);
+          }
+          if (countError.code === '42501') {
+            throw new Error(`Permission denied. Please check your Supabase RLS policies for table "${this.tableName}".`);
+          }
+          throw new Error(`Database error: ${countError.message}`);
+        }
+
+        console.log(`✅ Table "${this.tableName}" exists with ${count || 0} total rows`);
+        
+        if (count === 0) {
+          console.warn(`⚠️ Table "${this.tableName}" is empty`);
+          return this.getDefaultKPIData();
+        }
+
+        // Now try to fetch sample data
         const sampleDataPromise = supabase
           .from(this.tableName)
-          .select('*')
+          .select('"Customer ID", "Invoice Date", "Department", "Price", "Line Item", "Job"')
           .order('Invoice Date', { ascending: false })
           .limit(10);
 
@@ -43,7 +72,8 @@ export class SupabaseService {
         ]) as any;
 
         if (allError) {
-          console.error('Error fetching sample data:', allError);
+          console.error('❌ Error fetching sample data:', allError);
+          throw new Error(`Failed to fetch data: ${allError.message}`);
         } else {
           console.log('Sample data from table (first 10 rows):');
           console.log('Total rows in sample:', allData?.length || 0);
@@ -62,10 +92,13 @@ export class SupabaseService {
               return invoiceDate >= thirtyDaysAgo;
             });
             console.log('Has data from last 30 days:', hasRecentData);
+          } else {
+            console.warn('⚠️ No sample data returned from table');
           }
         }
       } catch (sampleError) {
-        console.warn('Could not fetch sample data:', sampleError);
+        console.error('❌ Could not fetch sample data:', sampleError);
+        throw sampleError;
       }
       
       // Try multiple date filtering approaches
@@ -77,7 +110,7 @@ export class SupabaseService {
         console.log('Trying standard date filtering...');
         const standardPromise = supabase
           .from(this.tableName)
-          .select('*')
+          .select('"Customer ID", "Invoice Date", "Department", "Price", "Line Item", "Job", "Customer"')
           .gte('Invoice Date', dateRange.start.toISOString().split('T')[0])
           .lte('Invoice Date', dateRange.end.toISOString().split('T')[0])
           .order('Invoice Date', { ascending: false });
@@ -86,13 +119,17 @@ export class SupabaseService {
         data = result.data;
         error = result.error;
         
+        if (error) {
+          console.error('❌ Standard date filtering error:', error);
+        }
+        
         if (data && data.length > 0) {
           console.log('Standard date filtering worked! Found', data.length, 'rows');
         } else {
           console.log('Standard date filtering returned no results');
         }
       } catch (standardError) {
-        console.warn('Standard date filtering failed:', standardError);
+        console.error('❌ Standard date filtering failed:', standardError);
       }
       
       // Approach 2: If no data found, try with different date formats
@@ -101,19 +138,24 @@ export class SupabaseService {
           console.log('Trying alternative date filtering...');
           const altPromise = supabase
             .from(this.tableName)
-            .select('*')
+            .select('"Customer ID", "Invoice Date", "Department", "Price", "Line Item", "Job", "Customer"')
             .gte('Invoice Date', dateRange.start.toISOString())
             .lte('Invoice Date', dateRange.end.toISOString())
             .order('Invoice Date', { ascending: false });
 
           const altResult = await Promise.race([altPromise, timeoutPromise]) as any;
+          
+          if (altResult.error) {
+            console.error('❌ Alternative date filtering error:', altResult.error);
+          }
+          
           if (altResult.data && altResult.data.length > 0) {
             data = altResult.data;
             error = altResult.error;
             console.log('Alternative date filtering worked! Found', data.length, 'rows');
           }
         } catch (altError) {
-          console.warn('Alternative date filtering failed:', altError);
+          console.error('❌ Alternative date filtering failed:', altError);
         }
       }
       
@@ -126,18 +168,23 @@ export class SupabaseService {
           
           const broadPromise = supabase
             .from(this.tableName)
-            .select('*')
+            .select('"Customer ID", "Invoice Date", "Department", "Price", "Line Item", "Job", "Customer"')
             .gte('Invoice Date', ninetyDaysAgo.toISOString().split('T')[0])
             .order('Invoice Date', { ascending: false });
 
           const broadResult = await Promise.race([broadPromise, timeoutPromise]) as any;
+          
+          if (broadResult.error) {
+            console.error('❌ Broader date filtering error:', broadResult.error);
+          }
+          
           if (broadResult.data && broadResult.data.length > 0) {
             data = broadResult.data;
             error = broadResult.error;
             console.log('Broader date range worked! Found', data.length, 'rows');
           }
         } catch (broadError) {
-          console.warn('Broader date filtering failed:', broadError);
+          console.error('❌ Broader date filtering failed:', broadError);
         }
       }
       if (error) {
@@ -156,7 +203,7 @@ export class SupabaseService {
           // Try without date filtering to see if we can get any data
           const fallbackPromise = supabase
             .from(this.tableName)
-            .select('*')
+            .select('"Customer ID", "Invoice Date", "Department", "Price", "Line Item", "Job", "Customer"')
             .order('Invoice Date', { ascending: false })
             .limit(1000);
 
@@ -166,8 +213,8 @@ export class SupabaseService {
           ]) as any;
           
           if (fallbackError) {
-            console.error('Error fetching fallback data:', fallbackError);
-            return this.getDefaultKPIData();
+            console.error('❌ Error fetching fallback data:', fallbackError);
+            throw new Error(`Failed to fetch any data from table "${this.tableName}": ${fallbackError.message}`);
           }
           
           if (fallbackData && fallbackData.length > 0) {
@@ -178,13 +225,13 @@ export class SupabaseService {
               latest: fallbackData[0]?.['Invoice Date']
             });
             return this.calculateKPIsFromSoldLineitems(fallbackData);
+          } else {
+            throw new Error(`Table "${this.tableName}" appears to be empty or inaccessible`);
           }
         } catch (fallbackError) {
-          console.error('Fallback query failed:', fallbackError);
+          console.error('❌ Fallback query failed:', fallbackError);
+          throw fallbackError;
         }
-        
-        console.error('❌ No data found at all - check your Supabase connection and table name');
-        return this.getDefaultKPIData();
       }
 
       // Calculate KPIs from the SoldLineitems data
@@ -192,7 +239,7 @@ export class SupabaseService {
       return this.calculateKPIsFromSoldLineitems(data);
     } catch (error) {
       console.error('Error in getKPIData:', error);
-      return this.getDefaultKPIData();
+      throw error;
     }
   }
 
@@ -379,6 +426,90 @@ export class SupabaseService {
   async testConnection(): Promise<boolean> {
     try {
       // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection test timeout')), 5000);
+      });
+      
+      // Test if table exists and is accessible
+      const testPromise = supabase
+        .from(this.tableName)
+        .select('count', { count: 'exact', head: true });
+
+      const { count, error } = await Promise.race([testPromise, timeoutPromise]) as any;
+
+      if (error) {
+        console.error('❌ Connection test error:', error);
+        if (error.code === 'PGRST116') {
+          console.error(`Table "${this.tableName}" does not exist`);
+        } else if (error.code === '42501') {
+          console.error(`Permission denied for table "${this.tableName}"`);
+        }
+        return false;
+      }
+      
+      console.log(`✅ Connection successful! Table "${this.tableName}" has ${count || 0} rows`);
+      return true;
+    } catch (error) {
+      console.error('❌ Supabase connection test failed:', error);
+      return false;
+    }
+  }
+
+  async testConnectionDetailed(): Promise<{ success: boolean; message: string; rowCount?: number }> {
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection test timeout')), 5000);
+      });
+      
+      const testPromise = supabase
+        .from(this.tableName)
+        .select('count', { count: 'exact', head: true });
+
+      const { count, error } = await Promise.race([testPromise, timeoutPromise]) as any;
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return {
+            success: false,
+            message: `Table "${this.tableName}" does not exist. Please check your table name in Settings.`
+          };
+        } else if (error.code === '42501') {
+          return {
+            success: false,
+            message: `Permission denied for table "${this.tableName}". Please check your Supabase RLS policies.`
+          };
+        } else {
+          return {
+            success: false,
+            message: `Database error: ${error.message}`
+          };
+        }
+      }
+      
+      if (count === 0) {
+        return {
+          success: true,
+          message: `Connected successfully, but table "${this.tableName}" is empty. Please add data to your table.`,
+          rowCount: 0
+        };
+      }
+      
+      return {
+        success: true,
+        message: `Successfully connected to table "${this.tableName}" with ${count} rows!`,
+        rowCount: count
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  // Legacy method for backward compatibility
+  async testConnectionLegacy(): Promise<boolean> {
+    try {
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Connection test timeout')), 5000);
       });
