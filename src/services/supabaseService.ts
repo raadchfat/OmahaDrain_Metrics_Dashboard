@@ -44,12 +44,12 @@ export class SupabaseService {
   // Calculate KPIs from SoldLineitems data
   private calculateKPIsFromSoldLineitems(data: any[]): KPIData {
     const totalJobs = new Set(data.map(row => row.Job)).size;
-    const totalRevenue = data.reduce((sum, row) => sum + (row.Price || 0), 0);
+    const totalRevenue = data.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
     
     // Install calls (jobs with revenue >= $10,000)
-    const installJobs = data.filter(row => (row.Price || 0) >= 10000);
+    const installJobs = data.filter(row => (Number(row.Price) || 0) >= 10000);
     const uniqueInstallJobs = new Set(installJobs.map(row => row.Job)).size;
-    const installRevenue = installJobs.reduce((sum, row) => sum + (row.Price || 0), 0);
+    const installRevenue = installJobs.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
     
     // Jetting jobs (line items containing "jetting" or similar)
     const jettingItems = data.filter(row => 
@@ -57,7 +57,7 @@ export class SupabaseService {
       (row['Line Item'] || '').toLowerCase().includes('jet')
     );
     const uniqueJettingJobs = new Set(jettingItems.map(row => row.Job)).size;
-    const jettingRevenue = jettingItems.reduce((sum, row) => sum + (row.Price || 0), 0);
+    const jettingRevenue = jettingItems.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
     
     // Descaling jobs
     const descalingItems = data.filter(row => 
@@ -65,7 +65,7 @@ export class SupabaseService {
       (row['Line Item'] || '').toLowerCase().includes('descale')
     );
     const uniqueDescalingJobs = new Set(descalingItems.map(row => row.Job)).size;
-    const descalingRevenue = descalingItems.reduce((sum, row) => sum + (row.Price || 0), 0);
+    const descalingRevenue = descalingItems.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
     
     // Membership data
     const membershipItems = data.filter(row => 
@@ -75,12 +75,12 @@ export class SupabaseService {
     const totalCustomers = new Set(data.map(row => row['Customer ID'])).size;
     
     // Zero revenue calls
-    const zeroRevenueJobs = data.filter(row => (row.Price || 0) === 0);
+    const zeroRevenueJobs = data.filter(row => (Number(row.Price) || 0) === 0);
     const uniqueZeroRevenueJobs = new Set(zeroRevenueJobs.map(row => row.Job)).size;
     
     // Diagnostic fee only (assuming diagnostic fees are typically $100-300)
     const diagnosticOnlyJobs = data.filter(row => {
-      const price = row.Price || 0;
+      const price = Number(row.Price) || 0;
       return price > 0 && price <= 300 && 
         ((row['Line Item'] || '').toLowerCase().includes('diagnostic') ||
          (row['Line Item'] || '').toLowerCase().includes('service call'));
@@ -144,7 +144,7 @@ export class SupabaseService {
     // Calculate daily install call percentages
     return Array.from(dailyData.entries()).map(([date, dayData]) => {
       const totalJobs = new Set(dayData.map(row => row.Job)).size;
-      const installJobs = dayData.filter(row => (row.Price || 0) >= 10000);
+      const installJobs = dayData.filter(row => (Number(row.Price) || 0) >= 10000);
       const uniqueInstallJobs = new Set(installJobs.map(row => row.Job)).size;
       
       return {

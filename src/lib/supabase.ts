@@ -38,8 +38,8 @@ export type Database = {
           "Price Adjustment": string | null
           "Price Adjusted At": string | null
           "Price Adjusted By": string | null
-          "Original Price": string | null
-          "Adjusted Price": string | null
+          "Original Price": number | null
+          "Adjusted Price": number | null
           "Primary Key": string
         }
         Insert: {
