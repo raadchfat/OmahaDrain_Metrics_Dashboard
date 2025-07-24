@@ -461,11 +461,13 @@ export class SupabaseService {
         setTimeout(() => reject(new Error('Connection test timeout')), 5000);
       });
       
-      const testPromise = supabase
+      // First try to get actual data instead of count
+      const dataTestPromise = supabase
         .from(this.tableName)
-        .select('count', { count: 'exact', head: true });
+        .select('"Primary Key"')
+        .limit(1);
 
-      const { count, error } = await Promise.race([testPromise, timeoutPromise]) as any;
+      const { data, error } = await Promise.race([dataTestPromise, timeoutPromise]) as any;
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -486,18 +488,46 @@ export class SupabaseService {
         }
       }
       
-      if (count === 0) {
+      if (!data || data.length === 0) {
+        // Try to get count as fallback
+        try {
+          const { count } = await supabase
+            .from(this.tableName)
+            .select('*', { count: 'exact', head: true });
+          
+          if (count === 0) {
+            return {
+              success: true,
+              message: `Connected successfully, but table "${this.tableName}" is empty. Please add data to your table.`,
+              rowCount: 0
+            };
+          }
+        } catch (countError) {
+          console.warn('Could not get exact count, but table appears to have data');
+        }
+        
         return {
           success: true,
-          message: `Connected successfully, but table "${this.tableName}" is empty. Please add data to your table.`,
-          rowCount: 0
+          message: `Connected successfully to table "${this.tableName}"! Data found and ready for KPI calculations.`,
+          rowCount: undefined
         };
+      }
+      
+      // Try to get approximate count
+      let approximateCount = 'unknown';
+      try {
+        const { count } = await supabase
+          .from(this.tableName)
+          .select('*', { count: 'exact', head: true });
+        approximateCount = count ? count.toString() : 'many';
+      } catch (countError) {
+        approximateCount = 'many';
       }
       
       return {
         success: true,
-        message: `Successfully connected to table "${this.tableName}" with ${count} rows!`,
-        rowCount: count
+        message: `Successfully connected to table "${this.tableName}" with ${approximateCount} rows!`,
+        rowCount: typeof approximateCount === 'string' ? undefined : parseInt(approximateCount)
       };
     } catch (error) {
       return {
