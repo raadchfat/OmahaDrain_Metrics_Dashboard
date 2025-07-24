@@ -24,37 +24,57 @@ export class SupabaseService {
         endDate: dateRange.end.toISOString().split('T')[0]
       });
       
-      // First, let's see what data exists without date filtering
-      const { data: allData, error: allError } = await supabase
-        .from(this.tableName)
-        .select('*')
-        .order('Invoice Date', { ascending: false })
-        .limit(10)
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000);
+      });
 
-      if (allError) {
-        console.error('Error fetching sample data:', allError)
-      } else {
-        console.log('Sample data from table (first 10 rows):');
-        console.log('Total rows in sample:', allData?.length || 0);
-        if (allData && allData.length > 0) {
-          console.log('Sample row structure:', Object.keys(allData[0]));
-          console.log('Sample Invoice Date values:', allData.slice(0, 5).map(row => ({
-            'Invoice Date': row['Invoice Date'],
-            'Invoice Date type': typeof row['Invoice Date']
-          })));
+      // First, let's see what data exists without date filtering
+      try {
+        const sampleDataPromise = supabase
+          .from(this.tableName)
+          .select('*')
+          .order('Invoice Date', { ascending: false })
+          .limit(10);
+
+        const { data: allData, error: allError } = await Promise.race([
+          sampleDataPromise,
+          timeoutPromise
+        ]) as any;
+
+        if (allError) {
+          console.error('Error fetching sample data:', allError);
+        } else {
+          console.log('Sample data from table (first 10 rows):');
+          console.log('Total rows in sample:', allData?.length || 0);
+          if (allData && allData.length > 0) {
+            console.log('Sample row structure:', Object.keys(allData[0]));
+            console.log('Sample Invoice Date values:', allData.slice(0, 5).map(row => ({
+              'Invoice Date': row['Invoice Date'],
+              'Invoice Date type': typeof row['Invoice Date']
+            })));
+          }
         }
+      } catch (sampleError) {
+        console.warn('Could not fetch sample data:', sampleError);
       }
       
-      const { data, error } = await supabase
+      // Main data query with timeout
+      const mainDataPromise = supabase
         .from(this.tableName)
         .select('*')
         .gte('Invoice Date', dateRange.start.toISOString().split('T')[0])
         .lte('Invoice Date', dateRange.end.toISOString().split('T')[0])
-        .order('Invoice Date', { ascending: false })
+        .order('Invoice Date', { ascending: false });
+
+      const { data, error } = await Promise.race([
+        mainDataPromise,
+        timeoutPromise
+      ]) as any;
 
       if (error) {
-        console.error('Error fetching KPI data:', error)
-        throw error
+        console.error('Error fetching KPI data:', error);
+        // Don't throw immediately, try fallback
       }
 
       console.log('Filtered data result:', {
@@ -68,32 +88,41 @@ export class SupabaseService {
       if (!data || data.length === 0) {
         console.warn('No data found in date range, trying without date filter...')
         
-        // Try without date filtering to see if we can get any data
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from(this.tableName)
-          .select('*')
-          .order('Invoice Date', { ascending: false })
-          .limit(1000)
-        
-        if (fallbackError) {
-          console.error('Error fetching fallback data:', fallbackError)
-          return this.getDefaultKPIData()
+        try {
+          // Try without date filtering to see if we can get any data
+          const fallbackPromise = supabase
+            .from(this.tableName)
+            .select('*')
+            .order('Invoice Date', { ascending: false })
+            .limit(1000);
+
+          const { data: fallbackData, error: fallbackError } = await Promise.race([
+            fallbackPromise,
+            timeoutPromise
+          ]) as any;
+          
+          if (fallbackError) {
+            console.error('Error fetching fallback data:', fallbackError);
+            return this.getDefaultKPIData();
+          }
+          
+          if (fallbackData && fallbackData.length > 0) {
+            console.log('Found data without date filter, using all available data for calculation');
+            console.log('Total rows found:', fallbackData.length);
+            return this.calculateKPIsFromSoldLineitems(fallbackData);
+          }
+        } catch (fallbackError) {
+          console.error('Fallback query failed:', fallbackError);
         }
         
-        if (fallbackData && fallbackData.length > 0) {
-          console.log('Found data without date filter, using all available data for calculation')
-          console.log('Total rows found:', fallbackData.length)
-          return this.calculateKPIsFromSoldLineitems(fallbackData)
-        }
-        
-        return this.getDefaultKPIData()
+        return this.getDefaultKPIData();
       }
 
       // Calculate KPIs from the SoldLineitems data
-      return this.calculateKPIsFromSoldLineitems(data)
+      return this.calculateKPIsFromSoldLineitems(data);
     } catch (error) {
-      console.error('Error in getKPIData:', error)
-      return this.getDefaultKPIData()
+      console.error('Error in getKPIData:', error);
+      return this.getDefaultKPIData();
     }
   }
 
@@ -279,15 +308,27 @@ export class SupabaseService {
 
   async testConnection(): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection test timeout')), 5000);
+      });
+      
+      const testPromise = supabase
         .from(this.tableName)
         .select('"Primary Key"')
-        .limit(1)
+        .limit(1);
 
-      return !error
+      const { data, error } = await Promise.race([testPromise, timeoutPromise]) as any;
+
+      if (error) {
+        console.error('Connection test error:', error);
+        return false;
+      }
+      
+      return true;
     } catch (error) {
-      console.error('Supabase connection test failed:', error)
-      return false
+      console.error('Supabase connection test failed:', error);
+      return false;
     }
   }
 

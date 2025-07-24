@@ -126,10 +126,18 @@ export const Dashboard: React.FC = () => {
         const dateRange = getDateRangeFromTimeFrame(timeFrame);
         
         console.log('Attempting to load data from Supabase...');
-        const [kpis, trends] = await Promise.all([
+        
+        // Add timeout wrapper for the entire operation
+        const dataPromise = Promise.all([
           supabaseService.getKPIData(dateRange),
           supabaseService.getTimeSeriesData(dateRange)
         ]);
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Data loading timeout')), 15000);
+        });
+        
+        const [kpis, trends] = await Promise.race([dataPromise, timeoutPromise]) as [KPIData, TimeSeriesData[]];
         
         console.log(`Successfully loaded data from Supabase table "${tableName}":`, { kpis, trendsLength: trends.length });
         console.log('KPI values loaded:', {
