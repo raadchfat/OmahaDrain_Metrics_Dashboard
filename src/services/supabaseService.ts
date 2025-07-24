@@ -43,13 +43,20 @@ export class SupabaseService {
 
   // Calculate KPIs from SoldLineitems data
   private calculateKPIsFromSoldLineitems(data: any[]): KPIData {
-    const totalJobs = new Set(data.map(row => row.Job)).size;
     const totalRevenue = data.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
     
-    // Install calls (jobs with revenue >= $10,000)
-    const installJobs = data.filter(row => (Number(row.Price) || 0) >= 10000);
-    const uniqueInstallJobs = new Set(installJobs.map(row => row.Job)).size;
+    // Install calls: count of prices ≥$10k / count of all "drain cleaning" calls
+    const drainCleaningCalls = data.filter(row => 
+      (row.Department || '').toLowerCase().includes('drain cleaning')
+    );
+    const installCalls = data.filter(row => (Number(row.Price) || 0) >= 10000);
+    
+    const totalDrainCleaningCalls = drainCleaningCalls.length;
+    const totalInstallCalls = installCalls.length;
     const installRevenue = installJobs.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
+    
+    // For other calculations, we'll use total jobs
+    const totalJobs = new Set(data.map(row => row.Job)).size;
     
     // Jetting jobs (line items containing "jetting" or similar)
     const jettingItems = data.filter(row => 
@@ -88,8 +95,8 @@ export class SupabaseService {
     const uniqueDiagnosticOnlyJobs = new Set(diagnosticOnlyJobs.map(row => row.Job)).size;
     
     return {
-      installCallsPercentage: totalJobs > 0 ? (uniqueInstallJobs / totalJobs) * 100 : 0,
-      installRevenuePerCall: totalJobs > 0 ? installRevenue / totalJobs : 0,
+      installCallsPercentage: totalDrainCleaningCalls > 0 ? (totalInstallCalls / totalDrainCleaningCalls) * 100 : 0,
+      installRevenuePerCall: totalDrainCleaningCalls > 0 ? installRevenue / totalDrainCleaningCalls : 0,
       jettingJobsPercentage: totalJobs > 0 ? (uniqueJettingJobs / totalJobs) * 100 : 0,
       jettingRevenuePerCall: totalJobs > 0 ? jettingRevenue / totalJobs : 0,
       descalingJobsPercentage: totalJobs > 0 ? (uniqueDescalingJobs / totalJobs) * 100 : 0,
