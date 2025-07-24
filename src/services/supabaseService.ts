@@ -267,38 +267,60 @@ export class SupabaseService {
     console.log('Sample Price values:', priceValues.slice(0, 10));
     console.log('Max price found:', Math.max(...priceValues.map(p => Number(p) || 0)));
     
-    // Install calls: count of prices ≥$10k / count of all "Drain Cleaning" calls (exact match)
-    const drainCleaningCalls = data.filter(row => {
-      const dept = row.Department;
-      return dept === 'Drain Cleaning';
-    });
-    console.log('Drain cleaning calls found:', drainCleaningCalls.length);
+    // Get all unique jobs (service calls) - this is our denominator
+    const allJobs = [...new Set(data.map(row => row.Job).filter(Boolean))];
+    console.log('Total unique jobs found:', allJobs.length);
     
-    const installCalls = data.filter(row => {
+    // Find jobs with install calls (any line item ≥$10k in the job)
+    const jobsWithInstalls = new Set();
+    const installLineItems = data.filter(row => {
       const price = Number(row.Price) || 0;
-      return price >= 10000;
+      if (price >= 10000) {
+        jobsWithInstalls.add(row.Job);
+        return true;
+      }
+      return false;
     });
-    console.log('Install calls (≥$10k) found:', installCalls.length);
     
-    // Debug: Show some examples
-    if (installCalls.length > 0) {
-      console.log('Sample install call:', {
-        price: installCalls[0].Price,
-        department: installCalls[0].Department,
-        lineItem: installCalls[0]['Line Item']
+    console.log('Install line items (≥$10k) found:', installLineItems.length);
+    console.log('Jobs with installs found:', jobsWithInstalls.size);
+    
+    // Debug: Show some examples of install jobs
+    if (installLineItems.length > 0) {
+      console.log('Sample install line items:');
+      installLineItems.slice(0, 3).forEach((item, index) => {
+        console.log(`${index + 1}. Job: ${item.Job}, Price: $${item.Price}, Department: ${item.Department}, Line Item: ${item['Line Item']}`);
       });
     }
     
-    const totalDrainCleaningCalls = drainCleaningCalls.length;
-    const totalInstallCalls = installCalls.length;
-    const installRevenue = installCalls.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
+    // Debug: Check for drain cleaning specifically
+    const drainCleaningItems = data.filter(row => {
+      const dept = row.Department;
+      return dept && dept.toLowerCase().includes('drain');
+    });
+    console.log('Items with "drain" in department:', drainCleaningItems.length);
     
-    const installCallsPercentage = totalDrainCleaningCalls > 0 ? (totalInstallCalls / totalDrainCleaningCalls) * 100 : 0;
-    console.log('Install calls percentage calculated:', installCallsPercentage);
+    // Show unique department values for debugging
+    const uniqueDepartments = [...new Set(data.map(row => row.Department).filter(Boolean))];
+    console.log('All unique departments in data:', uniqueDepartments);
+    
+    // Calculate install call rate: Jobs with installs / Total jobs
+    const installCallsPercentage = allJobs.length > 0 ? (jobsWithInstalls.size / allJobs.length) * 100 : 0;
+    
+    // Calculate install revenue per call: Total install revenue / Total jobs
+    const totalInstallRevenue = installLineItems.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
+    const installRevenuePerCall = allJobs.length > 0 ? totalInstallRevenue / allJobs.length : 0;
+    
+    console.log('=== CALCULATION RESULTS ===');
+    console.log('Total jobs:', allJobs.length);
+    console.log('Jobs with installs:', jobsWithInstalls.size);
+    console.log('Install call rate:', installCallsPercentage.toFixed(2) + '%');
+    console.log('Total install revenue:', totalInstallRevenue);
+    console.log('Install revenue per call:', installRevenuePerCall);
     console.log('=== END DEBUGGING ===');
     
-    // For other calculations, we'll use total jobs
-    const totalJobs = new Set(data.map(row => row.Job)).size;
+    // For other calculations, we'll use the same total jobs count
+    const totalJobs = allJobs.length;
     
     // Jetting jobs (line items containing "jetting" or similar)
     const jettingItems = data.filter(row => 
@@ -338,7 +360,7 @@ export class SupabaseService {
     
     return {
       installCallsPercentage: installCallsPercentage,
-      installRevenuePerCall: totalDrainCleaningCalls > 0 ? installRevenue / totalDrainCleaningCalls : 0,
+      installRevenuePerCall: installRevenuePerCall,
       jettingJobsPercentage: totalJobs > 0 ? (uniqueJettingJobs / totalJobs) * 100 : 0,
       jettingRevenuePerCall: totalJobs > 0 ? jettingRevenue / totalJobs : 0,
       descalingJobsPercentage: totalJobs > 0 ? (uniqueDescalingJobs / totalJobs) * 100 : 0,
