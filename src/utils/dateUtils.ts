@@ -61,6 +61,15 @@ export function getDateRangeFromTimeFrame(timeFrame: TimeFrame): DateRange {
         end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
       };
       
+    case 'lastmonth':
+      // Last complete month
+      const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+      return {
+        start: lastMonthStart,
+        end: lastMonthEnd
+      };
+      
     case 'quarter':
       // Last 90 days
       const quarterStart = new Date(today);
