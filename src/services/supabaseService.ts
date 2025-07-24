@@ -16,6 +16,35 @@ export class SupabaseService {
 
   async getKPIData(dateRange: DateRange): Promise<KPIData> {
     try {
+      console.log('=== SUPABASE DATE FILTERING DEBUG ===');
+      console.log('Requested date range:', {
+        start: dateRange.start.toISOString(),
+        end: dateRange.end.toISOString(),
+        startDate: dateRange.start.toISOString().split('T')[0],
+        endDate: dateRange.end.toISOString().split('T')[0]
+      });
+      
+      // First, let's see what data exists without date filtering
+      const { data: allData, error: allError } = await supabase
+        .from(this.tableName)
+        .select('*')
+        .order('Invoice Date', { ascending: false })
+        .limit(10)
+
+      if (allError) {
+        console.error('Error fetching sample data:', allError)
+      } else {
+        console.log('Sample data from table (first 10 rows):');
+        console.log('Total rows in sample:', allData?.length || 0);
+        if (allData && allData.length > 0) {
+          console.log('Sample row structure:', Object.keys(allData[0]));
+          console.log('Sample Invoice Date values:', allData.slice(0, 5).map(row => ({
+            'Invoice Date': row['Invoice Date'],
+            'Invoice Date type': typeof row['Invoice Date']
+          })));
+        }
+      }
+      
       const { data, error } = await supabase
         .from(this.tableName)
         .select('*')
@@ -28,8 +57,35 @@ export class SupabaseService {
         throw error
       }
 
+      console.log('Filtered data result:', {
+        rowsFound: data?.length || 0,
+        dateFilter: {
+          gte: dateRange.start.toISOString().split('T')[0],
+          lte: dateRange.end.toISOString().split('T')[0]
+        }
+      });
+      
       if (!data || data.length === 0) {
-        console.warn('No data found in date range, returning default values')
+        console.warn('No data found in date range, trying without date filter...')
+        
+        // Try without date filtering to see if we can get any data
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from(this.tableName)
+          .select('*')
+          .order('Invoice Date', { ascending: false })
+          .limit(1000)
+        
+        if (fallbackError) {
+          console.error('Error fetching fallback data:', fallbackError)
+          return this.getDefaultKPIData()
+        }
+        
+        if (fallbackData && fallbackData.length > 0) {
+          console.log('Found data without date filter, using all available data for calculation')
+          console.log('Total rows found:', fallbackData.length)
+          return this.calculateKPIsFromSoldLineitems(fallbackData)
+        }
+        
         return this.getDefaultKPIData()
       }
 
