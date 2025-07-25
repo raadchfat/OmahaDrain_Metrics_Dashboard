@@ -87,6 +87,11 @@ export const KPICard: React.FC<KPICardProps> = ({
           </div>
           {scoreRanges && score > 0 && (
             <div className="mt-2">
+              <span className="text-sm font-bold text-blue-600">Score = {score}</span>
+            </div>
+          )}
+          {scoreRanges && score > 0 && (
+            <div className="mt-2">
               <span className="text-xs font-bold text-gray-600">Score = {score}</span>
             </div>
           )}
@@ -102,20 +107,24 @@ export const KPICard: React.FC<KPICardProps> = ({
         </div>
       )}
       
-      {scoreRanges && (
+      {scoreRanges && score > 0 && (
         <div className="mt-3 pt-3 border-t border-gray-100">
-          <div className="text-xs text-gray-500">
-            <div className="font-semibold text-gray-600 mb-2">Scoring Guide:</div>
-            <div className="grid grid-cols-2 gap-1 text-xs">
+          <div className="text-xs">
+            <div className="font-semibold text-gray-600 mb-2">Score (based on KPI Result):</div>
+            <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-gray-700 border-b pb-1">
+                <span>Score</span>
+                <span>Install Call Rate Range</span>
+              </div>
               {scoreRanges.map((range, index) => (
-                <div key={index} className={`flex justify-between px-1 py-0.5 rounded ${
-                  range.score === score ? 'bg-blue-100 text-blue-800 font-bold' : ''
+                <div key={index} className={`grid grid-cols-2 gap-2 px-1 py-0.5 rounded text-xs ${
+                  range.score === score ? 'bg-blue-100 text-blue-800 font-bold' : 'text-gray-600'
                 }`}>
                   <span>{range.score}</span>
                   <span>
-                    {range.min === 0 ? 'Less than' : range.min + (unit === '%' ? '%' : '')}
-                    {range.max !== Infinity && range.min !== 0 ? ` – ${range.max - 0.01}${unit}` : 
-                     range.max === Infinity ? `${unit} or higher` : ` ${range.max}${unit}`}
+                    {range.min === 0 ? 'Less than 1%' : 
+                     range.max === Infinity ? `${range.min}% or higher` :
+                     `${range.min}% – ${range.max - 0.01}%`}
                   </span>
                 </div>
               ))}
