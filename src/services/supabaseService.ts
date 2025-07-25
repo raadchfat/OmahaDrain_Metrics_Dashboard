@@ -13,13 +13,13 @@ export class SupabaseService {
   private getDbTableName(logicalName: string): string {
     switch (logicalName) {
       case 'SoldLineitems':
-        return 'soldlineitems'; // lowercase as per PostgreSQL convention
+        return 'SoldLineitems'; // keep original casing
       case 'Opportunities':
-        return 'opportunities'; // lowercase as per PostgreSQL convention
+        return 'Opportunities'; // keep original casing
       case 'Jobs_revenue':
         return 'Jobs_revenue'; // keep original casing for this table
       default:
-        return logicalName.toLowerCase();
+        return logicalName; // keep original casing
     }
   }
 
