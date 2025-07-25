@@ -560,7 +560,7 @@ export class SupabaseService {
       // Test with table-specific columns
       let selectColumns: string;
       if (this.tableName === 'Opportunities') {
-        selectColumns = 'id, created_at, customer_name, opportunity_value, opportunity_stage';
+        selectColumns = 'created_at, customer_name, opportunity_value, opportunity_stage';
       } else {
         selectColumns = '"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"';
       }
@@ -657,9 +657,12 @@ export class SupabaseService {
       // Use appropriate primary key column based on table
       const primaryKeyColumn = this.tableName === 'Opportunities' ? 'id' : '"Primary Key"';
       
+      // For Opportunities table, use created_at since id doesn't exist
+      const selectColumn = this.tableName === 'Opportunities' ? 'created_at' : primaryKeyColumn;
+      
       const testPromise = supabase
         .from(this.tableName)
-        .select(primaryKeyColumn)
+        .select(selectColumn)
         .limit(1);
 
       const { data, error } = await Promise.race([testPromise, timeoutPromise]) as any;
