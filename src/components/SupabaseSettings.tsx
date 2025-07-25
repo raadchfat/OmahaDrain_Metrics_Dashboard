@@ -28,6 +28,10 @@ export const SupabaseSettings: React.FC = () => {
       isActive: true
     }
   ]);
+  
+  // Debug log for available tables
+  console.log("Available tables: ", tableConfigs);
+  
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionResults, setConnectionResults] = useState<Record<string, { status: 'idle' | 'success' | 'error', message: string }>>({});
   const [rawData, setRawData] = useState<any[]>([]);
