@@ -349,16 +349,16 @@ export const Dashboard: React.FC = () => {
       trend: 'up' as const,
       trendValue: 12.8,
       scoreRanges: [
-        { min: 0, max: 500, score: 1 },
-        { min: 500, max: 1000, score: 2 },
-        { min: 1000, max: 1500, score: 3 },
-        { min: 1500, max: 2000, score: 4 },
-        { min: 2000, max: 2500, score: 5 },
-        { min: 2500, max: 3000, score: 6 },
-        { min: 3000, max: 3500, score: 7 },
-        { min: 3500, max: 4000, score: 8 },
-        { min: 4000, max: 5000, score: 9 },
-        { min: 5000, max: Infinity, score: 10 }
+        { min: 0, max: 399, score: 1 },
+        { min: 400, max: 499, score: 2 },
+        { min: 500, max: 599, score: 3 },
+        { min: 600, max: 699, score: 4 },
+        { min: 700, max: 799, score: 5 },
+        { min: 800, max: 899, score: 6 },
+        { min: 900, max: 999, score: 7 },
+        { min: 1000, max: 1099, score: 8 },
+        { min: 1100, max: 1249, score: 9 },
+        { min: 1250, max: Infinity, score: 10 }
       ]
     },
     {
