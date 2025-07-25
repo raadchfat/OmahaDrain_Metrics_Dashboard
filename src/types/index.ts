@@ -25,9 +25,34 @@ export interface TimeSeriesData {
 
 export interface GoogleSheetConfig {
   sheetId: string;
+  name: string;
   apiKey: string;
   range: string;
   refreshInterval: number;
+  isActive: boolean;
+  dataType: 'kpi' | 'timeseries' | 'raw';
+  lastSync?: Date;
+}
+
+export interface MultiSheetConfig {
+  sheets: GoogleSheetConfig[];
+  globalApiKey: string;
+  scoringRanges?: Record<string, ScoreRange[]>;
+}
+
+export interface ScoreRange {
+  min: number;
+  max: number;
+  score: number;
+}
+
+export interface KPIMetric {
+  id: string;
+  name: string;
+  unit: string;
+  description: string;
+  formula: string;
+  defaultRanges: ScoreRange[];
 }
 
 export interface User {
@@ -42,4 +67,14 @@ export interface DateRange {
   end: Date;
 }
 
-export type TimeFrame = 'week' | 'month' | 'quarter' | 'year' | 'custom';
+export type TimeFrame = 'today' | 'yesterday' | 'week' | 'lastweek' | 'month' | 'quarter' | 'year' | 'custom';
+
+export type TableName = 'SoldLineitems' | 'Opportunities' | 'Jobs_revenue';
+
+export interface TableConfig {
+  name: TableName;
+  displayName: string;
+  description: string;
+  primaryDateColumn: string;
+  isActive: boolean;
+}

@@ -1,14 +1,18 @@
 import React from 'react';
 import { Info, TrendingUp, TrendingDown } from 'lucide-react';
+import { ScoreRange } from '../../types';
+import { getScoreFromValue } from '../../utils/scoringUtils';
 
 interface KPICardProps {
   title: string;
   value: number;
   unit?: string;
   description: string;
+  formula?: string;
   trend?: 'up' | 'down' | 'neutral';
   trendValue?: number;
   color?: 'blue' | 'green' | 'orange' | 'red' | 'purple';
+  scoreRanges?: ScoreRange[];
 }
 
 const colorClasses = {
@@ -24,10 +28,17 @@ export const KPICard: React.FC<KPICardProps> = ({
   value,
   unit = '',
   description,
+  formula,
   trend = 'neutral',
   trendValue,
-  color = 'blue'
+  color = 'blue',
+  scoreRanges
 }) => {
+  const score = getScoreFromValue(value, scoreRanges);
+  
+  // Debug logging
+  console.log('KPICard Debug:', { title, value, scoreRanges, score });
+  
   const formatValue = (val: number) => {
     if (unit === '$') {
       return val.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -71,6 +82,22 @@ export const KPICard: React.FC<KPICardProps> = ({
         </div>
         <div className={`w-4 h-16 rounded-full ${colorClasses[color]}`}></div>
       </div>
+      
+      {formula && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <p className="text-xs text-gray-500 font-mono leading-relaxed">
+            <span className="font-semibold text-gray-600">Formula:</span> {formula}
+          </p>
+          
+          {scoreRanges && score > 0 && (
+            <div className="mt-3">
+              <div className="mt-2">
+                <span className="text-sm font-bold text-blue-600">Score: {score}/10</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
