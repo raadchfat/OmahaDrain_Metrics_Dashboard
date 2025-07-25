@@ -45,6 +45,9 @@ export const KPICard: React.FC<KPICardProps> = ({
 }) => {
   const score = getScoreFromValue(value, scoreRanges);
   
+  // Debug logging
+  console.log('KPICard Debug:', { title, value, scoreRanges, score });
+  
   const formatValue = (val: number) => {
     if (unit === '$') {
       return val.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -85,16 +88,6 @@ export const KPICard: React.FC<KPICardProps> = ({
               </div>
             )}
           </div>
-          {scoreRanges && score > 0 && (
-            <div className="mt-2">
-              <span className="text-sm font-bold text-blue-600">Score = {score}</span>
-            </div>
-          )}
-          {scoreRanges && score > 0 && (
-            <div className="mt-2">
-              <span className="text-xs font-bold text-gray-600">Score = {score}</span>
-            </div>
-          )}
         </div>
         <div className={`w-4 h-16 rounded-full ${colorClasses[color]}`}></div>
       </div>

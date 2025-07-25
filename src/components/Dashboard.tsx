@@ -554,6 +554,7 @@ export const Dashboard: React.FC = () => {
             color={card.color}
             trend={card.trend}
             trendValue={card.trendValue}
+            scoreRanges={card.scoreRanges}
           />
         ))}
       </div>
