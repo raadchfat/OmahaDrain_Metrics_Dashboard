@@ -393,16 +393,16 @@ export const Dashboard: React.FC = () => {
       trend: 'up' as const,
       trendValue: 8.5,
       scoreRanges: [
-        { min: 0, max: 50, score: 1 },
-        { min: 50, max: 100, score: 2 },
-        { min: 100, max: 150, score: 3 },
-        { min: 150, max: 200, score: 4 },
-        { min: 200, max: 250, score: 5 },
-        { min: 250, max: 300, score: 6 },
-        { min: 300, max: 350, score: 7 },
-        { min: 350, max: 400, score: 8 },
-        { min: 400, max: 500, score: 9 },
-        { min: 500, max: Infinity, score: 10 }
+        { min: 0, max: 39, score: 1 },
+        { min: 40, max: 59, score: 2 },
+        { min: 60, max: 79, score: 3 },
+        { min: 80, max: 99, score: 4 },
+        { min: 100, max: 119, score: 5 },
+        { min: 120, max: 139, score: 6 },
+        { min: 140, max: 159, score: 7 },
+        { min: 160, max: 179, score: 8 },
+        { min: 180, max: 199, score: 9 },
+        { min: 200, max: Infinity, score: 10 }
       ]
     },
     {
@@ -436,16 +436,16 @@ export const Dashboard: React.FC = () => {
       trend: 'up' as const,
       trendValue: 15.3,
       scoreRanges: [
-        { min: 0, max: 25, score: 1 },
-        { min: 25, max: 50, score: 2 },
-        { min: 50, max: 75, score: 3 },
-        { min: 75, max: 100, score: 4 },
-        { min: 100, max: 125, score: 5 },
-        { min: 125, max: 150, score: 6 },
-        { min: 150, max: 175, score: 7 },
-        { min: 175, max: 200, score: 8 },
-        { min: 200, max: 250, score: 9 },
-        { min: 250, max: Infinity, score: 10 }
+        { min: 0, max: 39, score: 1 },
+        { min: 40, max: 59, score: 2 },
+        { min: 60, max: 79, score: 3 },
+        { min: 80, max: 99, score: 4 },
+        { min: 100, max: 119, score: 5 },
+        { min: 120, max: 139, score: 6 },
+        { min: 140, max: 159, score: 7 },
+        { min: 160, max: 179, score: 8 },
+        { min: 180, max: 199, score: 9 },
+        { min: 200, max: Infinity, score: 10 }
       ]
     },
     {
