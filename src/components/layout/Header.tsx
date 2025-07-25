@@ -1,14 +1,12 @@
 import React from 'react';
-import { BarChart3, Settings, LogOut, User, RefreshCw } from 'lucide-react';
+import { BarChart3, Settings, LogOut, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
-  onRefresh: () => void;
-  isRefreshing: boolean;
   onSettingsClick: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing, onSettingsClick }) => {
+export const Header: React.FC<HeaderProps> = ({ onSettingsClick }) => {
   const { user, logout } = useAuth();
 
   return (
@@ -28,15 +26,6 @@ export const Header: React.FC<HeaderProps> = ({ onRefresh, isRefreshing, onSetti
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Sync All Sheets
-            </button>
-
             <button
               onClick={onSettingsClick}
               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"

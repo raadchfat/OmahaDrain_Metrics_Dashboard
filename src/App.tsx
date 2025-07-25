@@ -72,8 +72,6 @@ const AppContent: React.FC = () => {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
-          onRefresh={handleRefresh} 
-          isRefreshing={isRefreshing} 
           onSettingsClick={handleSettingsClick} 
         />
         
