@@ -347,7 +347,19 @@ export const Dashboard: React.FC = () => {
       formula: 'Install Call Revenue Rate% = Sum of Install Jobs (≥10k) / Number of Service Calls',
       color: 'green' as const,
       trend: 'up' as const,
-      trendValue: 12.8
+      trendValue: 12.8,
+      scoreRanges: [
+        { min: 0, max: 500, score: 1 },
+        { min: 500, max: 1000, score: 2 },
+        { min: 1000, max: 1500, score: 3 },
+        { min: 1500, max: 2000, score: 4 },
+        { min: 2000, max: 2500, score: 5 },
+        { min: 2500, max: 3000, score: 6 },
+        { min: 3000, max: 3500, score: 7 },
+        { min: 3500, max: 4000, score: 8 },
+        { min: 4000, max: 5000, score: 9 },
+        { min: 5000, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Jetting Jobs Rate',
@@ -357,7 +369,19 @@ export const Dashboard: React.FC = () => {
       formula: 'Jetting Jobs Performed ÷ Total Jobs Performed × 100',
       color: 'orange' as const,
       trend: 'down' as const,
-      trendValue: -2.1
+      trendValue: -2.1,
+      scoreRanges: [
+        { min: 0, max: 5, score: 1 },
+        { min: 5, max: 10, score: 2 },
+        { min: 10, max: 15, score: 3 },
+        { min: 15, max: 20, score: 4 },
+        { min: 20, max: 25, score: 5 },
+        { min: 25, max: 30, score: 6 },
+        { min: 30, max: 35, score: 7 },
+        { min: 35, max: 40, score: 8 },
+        { min: 40, max: 50, score: 9 },
+        { min: 50, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Jetting Revenue per Call',
@@ -367,7 +391,19 @@ export const Dashboard: React.FC = () => {
       formula: 'Jetting Revenue per Service Call = Total Jetting Revenue ÷ Total Jobs Performed',
       color: 'purple' as const,
       trend: 'up' as const,
-      trendValue: 8.5
+      trendValue: 8.5,
+      scoreRanges: [
+        { min: 0, max: 50, score: 1 },
+        { min: 50, max: 100, score: 2 },
+        { min: 100, max: 150, score: 3 },
+        { min: 150, max: 200, score: 4 },
+        { min: 200, max: 250, score: 5 },
+        { min: 250, max: 300, score: 6 },
+        { min: 300, max: 350, score: 7 },
+        { min: 350, max: 400, score: 8 },
+        { min: 400, max: 500, score: 9 },
+        { min: 500, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Descaling Jobs Rate',
@@ -376,7 +412,19 @@ export const Dashboard: React.FC = () => {
       description: 'Percentage of unique Drain Cleaning jobs that included descaling services',
       formula: 'Descaling Jobs Performed ÷ Drain Cleaning Service Calls Performed × 100',
       color: 'blue' as const,
-      trend: 'neutral' as const
+      trend: 'neutral' as const,
+      scoreRanges: [
+        { min: 0, max: 5, score: 1 },
+        { min: 5, max: 10, score: 2 },
+        { min: 10, max: 15, score: 3 },
+        { min: 15, max: 20, score: 4 },
+        { min: 20, max: 25, score: 5 },
+        { min: 25, max: 30, score: 6 },
+        { min: 30, max: 35, score: 7 },
+        { min: 35, max: 40, score: 8 },
+        { min: 40, max: 50, score: 9 },
+        { min: 50, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Descaling Revenue per Call',
@@ -386,7 +434,19 @@ export const Dashboard: React.FC = () => {
       formula: 'Descaling Revenue per Service Call = Total Descaling Revenue ÷ Total Drain Cleaning Jobs Performed',
       color: 'green' as const,
       trend: 'up' as const,
-      trendValue: 15.3
+      trendValue: 15.3,
+      scoreRanges: [
+        { min: 0, max: 25, score: 1 },
+        { min: 25, max: 50, score: 2 },
+        { min: 50, max: 75, score: 3 },
+        { min: 75, max: 100, score: 4 },
+        { min: 100, max: 125, score: 5 },
+        { min: 125, max: 150, score: 6 },
+        { min: 150, max: 175, score: 7 },
+        { min: 175, max: 200, score: 8 },
+        { min: 200, max: 250, score: 9 },
+        { min: 250, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Membership Conversion',
@@ -396,7 +456,19 @@ export const Dashboard: React.FC = () => {
       formula: '(# of New Memberships) ÷ (# of Total Customers) × 100',
       color: 'orange' as const,
       trend: 'up' as const,
-      trendValue: 7.2
+      trendValue: 7.2,
+      scoreRanges: [
+        { min: 0, max: 2, score: 1 },
+        { min: 2, max: 4, score: 2 },
+        { min: 4, max: 6, score: 3 },
+        { min: 6, max: 8, score: 4 },
+        { min: 8, max: 10, score: 5 },
+        { min: 10, max: 12, score: 6 },
+        { min: 12, max: 15, score: 7 },
+        { min: 15, max: 18, score: 8 },
+        { min: 18, max: 22, score: 9 },
+        { min: 22, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Memberships Renewed',
@@ -406,7 +478,19 @@ export const Dashboard: React.FC = () => {
       formula: 'COUNT(Renewed Memberships)',
       color: 'purple' as const,
       trend: 'up' as const,
-      trendValue: 18.7
+      trendValue: 18.7,
+      scoreRanges: [
+        { min: 0, max: 5, score: 1 },
+        { min: 5, max: 10, score: 2 },
+        { min: 10, max: 20, score: 3 },
+        { min: 20, max: 35, score: 4 },
+        { min: 35, max: 50, score: 5 },
+        { min: 50, max: 75, score: 6 },
+        { min: 75, max: 100, score: 7 },
+        { min: 100, max: 150, score: 8 },
+        { min: 150, max: 200, score: 9 },
+        { min: 200, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Tech Pay Percentage',
@@ -416,7 +500,19 @@ export const Dashboard: React.FC = () => {
       formula: '(Total Tech Pay) ÷ (Total Tech Call Revenue) × 100',
       color: 'red' as const,
       trend: 'down' as const,
-      trendValue: -1.8
+      trendValue: -1.8,
+      scoreRanges: [
+        { min: 50, max: Infinity, score: 1 },
+        { min: 45, max: 50, score: 2 },
+        { min: 40, max: 45, score: 3 },
+        { min: 35, max: 40, score: 4 },
+        { min: 30, max: 35, score: 5 },
+        { min: 25, max: 30, score: 6 },
+        { min: 20, max: 25, score: 7 },
+        { min: 15, max: 20, score: 8 },
+        { min: 10, max: 15, score: 9 },
+        { min: 0, max: 10, score: 10 }
+      ]
     },
     {
       title: 'Labor Revenue per Hour',
@@ -426,7 +522,19 @@ export const Dashboard: React.FC = () => {
       formula: '(Total Labor Revenue) ÷ (Total Worked Hours)',
       color: 'blue' as const,
       trend: 'up' as const,
-      trendValue: 9.4
+      trendValue: 9.4,
+      scoreRanges: [
+        { min: 0, max: 50, score: 1 },
+        { min: 50, max: 75, score: 2 },
+        { min: 75, max: 100, score: 3 },
+        { min: 100, max: 125, score: 4 },
+        { min: 125, max: 150, score: 5 },
+        { min: 150, max: 175, score: 6 },
+        { min: 175, max: 200, score: 7 },
+        { min: 200, max: 250, score: 8 },
+        { min: 250, max: 300, score: 9 },
+        { min: 300, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Job Efficiency',
@@ -436,7 +544,19 @@ export const Dashboard: React.FC = () => {
       formula: '(Allotted Hours for Repair) ÷ (Actual Repair Time) × 100',
       color: 'green' as const,
       trend: 'up' as const,
-      trendValue: 3.6
+      trendValue: 3.6,
+      scoreRanges: [
+        { min: 0, max: 60, score: 1 },
+        { min: 60, max: 70, score: 2 },
+        { min: 70, max: 75, score: 3 },
+        { min: 75, max: 80, score: 4 },
+        { min: 80, max: 85, score: 5 },
+        { min: 85, max: 90, score: 6 },
+        { min: 90, max: 95, score: 7 },
+        { min: 95, max: 100, score: 8 },
+        { min: 100, max: 110, score: 9 },
+        { min: 110, max: Infinity, score: 10 }
+      ]
     },
     {
       title: 'Zero Revenue Calls',
@@ -446,7 +566,19 @@ export const Dashboard: React.FC = () => {
       formula: '(# of $0 Revenue Calls) ÷ (Total # of Calls) × 100',
       color: 'red' as const,
       trend: 'down' as const,
-      trendValue: -12.5
+      trendValue: -12.5,
+      scoreRanges: [
+        { min: 20, max: Infinity, score: 1 },
+        { min: 18, max: 20, score: 2 },
+        { min: 15, max: 18, score: 3 },
+        { min: 12, max: 15, score: 4 },
+        { min: 10, max: 12, score: 5 },
+        { min: 8, max: 10, score: 6 },
+        { min: 6, max: 8, score: 7 },
+        { min: 4, max: 6, score: 8 },
+        { min: 2, max: 4, score: 9 },
+        { min: 0, max: 2, score: 10 }
+      ]
     },
     {
       title: 'Diagnostic Fee Only',
@@ -456,7 +588,19 @@ export const Dashboard: React.FC = () => {
       formula: '(# of Diagnostic Fee Only Calls) ÷ (Total # of Calls) × 100',
       color: 'orange' as const,
       trend: 'down' as const,
-      trendValue: -5.8
+      trendValue: -5.8,
+      scoreRanges: [
+        { min: 40, max: Infinity, score: 1 },
+        { min: 35, max: 40, score: 2 },
+        { min: 30, max: 35, score: 3 },
+        { min: 25, max: 30, score: 4 },
+        { min: 20, max: 25, score: 5 },
+        { min: 15, max: 20, score: 6 },
+        { min: 12, max: 15, score: 7 },
+        { min: 8, max: 12, score: 8 },
+        { min: 5, max: 8, score: 9 },
+        { min: 0, max: 5, score: 10 }
+      ]
     },
     {
       title: 'Callback Rate',
@@ -466,7 +610,19 @@ export const Dashboard: React.FC = () => {
       formula: '(# of Callback Jobs) ÷ (Total # of Jobs) × 100',
       color: 'red' as const,
       trend: 'down' as const,
-      trendValue: -8.2
+      trendValue: -8.2,
+      scoreRanges: [
+        { min: 15, max: Infinity, score: 1 },
+        { min: 12, max: 15, score: 2 },
+        { min: 10, max: 12, score: 3 },
+        { min: 8, max: 10, score: 4 },
+        { min: 6, max: 8, score: 5 },
+        { min: 5, max: 6, score: 6 },
+        { min: 4, max: 5, score: 7 },
+        { min: 3, max: 4, score: 8 },
+        { min: 2, max: 3, score: 9 },
+        { min: 0, max: 2, score: 10 }
+      ]
     },
     {
       title: 'Client Complaints',
@@ -476,7 +632,19 @@ export const Dashboard: React.FC = () => {
       formula: '(# of Jobs with Complaints) ÷ (Total # of Jobs) × 100',
       color: 'red' as const,
       trend: 'down' as const,
-      trendValue: -15.3
+      trendValue: -15.3,
+      scoreRanges: [
+        { min: 10, max: Infinity, score: 1 },
+        { min: 8, max: 10, score: 2 },
+        { min: 6, max: 8, score: 3 },
+        { min: 5, max: 6, score: 4 },
+        { min: 4, max: 5, score: 5 },
+        { min: 3, max: 4, score: 6 },
+        { min: 2, max: 3, score: 7 },
+        { min: 1.5, max: 2, score: 8 },
+        { min: 1, max: 1.5, score: 9 },
+        { min: 0, max: 1, score: 10 }
+      ]
     },
     {
       title: 'Client Reviews',
@@ -486,7 +654,19 @@ export const Dashboard: React.FC = () => {
       formula: '(# of Customer Reviews) ÷ (Total # of Customers) × 100',
       color: 'green' as const,
       trend: 'up' as const,
-      trendValue: 22.1
+      trendValue: 22.1,
+      scoreRanges: [
+        { min: 0, max: 10, score: 1 },
+        { min: 10, max: 20, score: 2 },
+        { min: 20, max: 30, score: 3 },
+        { min: 30, max: 40, score: 4 },
+        { min: 40, max: 50, score: 5 },
+        { min: 50, max: 60, score: 6 },
+        { min: 60, max: 70, score: 7 },
+        { min: 70, max: 80, score: 8 },
+        { min: 80, max: 90, score: 9 },
+        { min: 90, max: Infinity, score: 10 }
+      ]
     }
   ];
 
