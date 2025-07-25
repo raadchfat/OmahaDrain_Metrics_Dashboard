@@ -557,10 +557,17 @@ export class SupabaseService {
         setTimeout(() => reject(new Error('Connection test timeout')), 5000);
       });
       
-      // Test with your exact table structure
+      // Test with table-specific columns
+      let selectColumns: string;
+      if (this.tableName === 'Opportunities') {
+        selectColumns = 'id, created_at, customer_name, opportunity_value, opportunity_stage';
+      } else {
+        selectColumns = '"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"';
+      }
+      
       const dataTestPromise = supabase
         .from(this.tableName)
-        .select('"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"')
+        .select(selectColumns)
         .limit(5);
 
       const { data, error } = await Promise.race([dataTestPromise, timeoutPromise]) as any;
@@ -647,9 +654,12 @@ export class SupabaseService {
         setTimeout(() => reject(new Error('Connection test timeout')), 5000);
       });
       
+      // Use appropriate primary key column based on table
+      const primaryKeyColumn = this.tableName === 'Opportunities' ? 'id' : '"Primary Key"';
+      
       const testPromise = supabase
         .from(this.tableName)
-        .select('"Primary Key"')
+        .select(primaryKeyColumn)
         .limit(1);
 
       const { data, error } = await Promise.race([testPromise, timeoutPromise]) as any;
