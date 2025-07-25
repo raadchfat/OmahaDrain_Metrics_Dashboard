@@ -27,7 +27,7 @@ export const DataViewer: React.FC = () => {
     {
       name: 'Jobs_revenue',
       displayName: 'Jobs Revenue',
-      description: 'Completed job revenue and billing information',
+      description: 'Completed job revenue and billing information (Historical Data)',
       primaryDateColumn: 'Job',
       isActive: true
     }

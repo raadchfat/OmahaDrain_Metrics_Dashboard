@@ -187,10 +187,11 @@ export class SupabaseService {
   private async getJobsRevenueKPIData(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
     console.log('🔍 Fetching Jobs_revenue data...');
     console.log('⚠️ Note: Jobs_revenue table does not have a date column, so date filtering is not applied');
+    console.log('📋 Using exact table name: "Jobs_revenue" (case-sensitive)');
     
     // Step 1: Fetch sample data to understand structure
     const samplePromise = supabase
-      .from(this.tableName)
+      .from('"Jobs_revenue"')
       .select('"Completed", "Job", "Customer", "Revenue", "Department", "Owner"')
       .order('"Job"', { ascending: false })
       .limit(50);
@@ -219,7 +220,7 @@ export class SupabaseService {
     // Step 2: For Jobs_revenue, we don't have date filtering since there's no date column
     // We'll use all available data
     const allDataPromise = supabase
-      .from(this.tableName)
+      .from('"Jobs_revenue"')
       .select('*')
       .order('"Job"', { ascending: false });
 
@@ -673,16 +674,20 @@ export class SupabaseService {
   async getRawData(limit: number = 100): Promise<any[]> {
     try {
       let orderColumn: string;
+      let tableName: string;
       if (this.tableName === 'Opportunities') {
         orderColumn = '"Date"';
+        tableName = '"Opportunities"';
       } else if (this.tableName === 'Jobs_revenue') {
         orderColumn = '"Job"';
+        tableName = '"Jobs_revenue"';
       } else {
         orderColumn = '"Invoice Date"';
+        tableName = '"SoldLineitems"';
       }
       
       const { data, error } = await supabase
-        .from(this.tableName)
+        .from(tableName)
         .select('*')
         .order(orderColumn, { ascending: false })
         .limit(limit)
@@ -734,7 +739,7 @@ export class SupabaseService {
   async testConnectionDetailed(): Promise<{ success: boolean; message: string; rowCount?: number }> {
     try {
       console.log('🔍 Testing Supabase connection for table:', this.tableName);
-      console.log('Table name:', this.tableName);
+      console.log('Table name (exact):', `"${this.tableName}"`);
       console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
       
       const timeoutPromise = new Promise((_, reject) => {
@@ -743,18 +748,23 @@ export class SupabaseService {
       
       // Test with table-specific columns
       let selectColumns: string;
+      let tableName: string;
       if (this.tableName === 'Opportunities') {
         selectColumns = '"Date", "Job", "Customer", "Revenue", "Status"';
+        tableName = '"Opportunities"';
       } else if (this.tableName === 'Jobs_revenue') {
         selectColumns = '"Job", "Customer", "Revenue", "Department", "Completed"';
+        tableName = '"Jobs_revenue"';
       } else {
         selectColumns = '"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"';
+        tableName = '"SoldLineitems"';
       }
       
       console.log('Testing with columns:', selectColumns);
+      console.log('Using table name:', tableName);
       
       const dataTestPromise = supabase
-        .from(this.tableName)
+        .from(tableName)
         .select(selectColumns)
         .limit(5);
 
@@ -876,8 +886,17 @@ export class SupabaseService {
 
   async getTotalCount(): Promise<{ count: number }> {
     try {
+      let tableName: string;
+      if (this.tableName === 'Opportunities') {
+        tableName = '"Opportunities"';
+      } else if (this.tableName === 'Jobs_revenue') {
+        tableName = '"Jobs_revenue"';
+      } else {
+        tableName = '"SoldLineitems"';
+      }
+      
       const { count, error } = await supabase
-        .from(this.tableName)
+        .from(tableName)
         .select('*', { count: 'exact', head: true })
 
       if (error) {

@@ -124,7 +124,7 @@ export type Database = {
         }
       }
     }
-    Jobs_revenue: {
+    "Jobs_revenue": {
       Row: {
         "Completed": string | null
         "Invoice": number | null
