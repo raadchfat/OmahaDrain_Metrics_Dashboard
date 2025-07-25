@@ -104,32 +104,35 @@ export const KPICard: React.FC<KPICardProps> = ({
           <p className="text-xs text-gray-500 font-mono leading-relaxed">
             <span className="font-semibold text-gray-600">Formula:</span> {formula}
           </p>
-        </div>
-      )}
-      
-      {scoreRanges && score > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <div className="text-xs">
-            <div className="font-semibold text-gray-600 mb-2">Score (based on KPI Result):</div>
-            <div className="space-y-1">
-              <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-gray-700 border-b pb-1">
-                <span>Score</span>
-                <span>Install Call Rate Range</span>
+          
+          {scoreRanges && score > 0 && (
+            <div className="mt-3">
+              <div className="mb-2">
+                <span className="text-xs font-bold text-blue-600">Score = {score}</span>
               </div>
-              {scoreRanges.map((range, index) => (
-                <div key={index} className={`grid grid-cols-2 gap-2 px-1 py-0.5 rounded text-xs ${
-                  range.score === score ? 'bg-blue-100 text-blue-800 font-bold' : 'text-gray-600'
-                }`}>
-                  <span>{range.score}</span>
-                  <span>
-                    {range.min === 0 ? 'Less than 1%' : 
-                     range.max === Infinity ? `${range.min}% or higher` :
-                     `${range.min}% – ${range.max - 0.01}%`}
-                  </span>
+              <div className="text-xs">
+                <div className="font-semibold text-gray-600 mb-2">Score (based on KPI Result):</div>
+                <div className="space-y-1">
+                  <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-gray-700 border-b pb-1">
+                    <span>Score</span>
+                    <span>Install Call Rate Range</span>
+                  </div>
+                  {scoreRanges.map((range, index) => (
+                    <div key={index} className={`grid grid-cols-2 gap-2 px-1 py-0.5 rounded text-xs ${
+                      range.score === score ? 'bg-blue-100 text-blue-800 font-bold' : 'text-gray-600'
+                    }`}>
+                      <span>{range.score}</span>
+                      <span>
+                        {range.min === 0 ? 'Less than 1%' : 
+                         range.max === Infinity ? `${range.min}% or higher` :
+                         `${range.min}% – ${range.max - 0.01}%`}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
