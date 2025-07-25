@@ -51,55 +51,76 @@ export type Database = {
       }
       Opportunities: {
         Row: {
-          id: string
-          created_at: string
-          updated_at: string | null
-          customer_name: string | null
-          customer_email: string | null
-          customer_phone: string | null
-          opportunity_value: number | null
-          opportunity_stage: string | null
-          opportunity_source: string | null
-          assigned_technician: string | null
-          scheduled_date: string | null
-          completion_date: string | null
-          opportunity_type: string | null
-          notes: string | null
-          status: string | null
+          "Date": string | null
+          "Job": number
+          "Tags": string | null
+          "Customer": string | null
+          "Email": string | null
+          "Phone": string | null
+          "Location Name": string | null
+          "Street": string | null
+          "Apt/Suite": string | null
+          "City": string | null
+          "State": string | null
+          "Zip Code": number | null
+          "Department": string | null
+          "Status": string | null
+          "Opportunity Owner": string | null
+          "Lead Type": string | null
+          "Lead Source": string | null
+          "Call Assigned To": string | null
+          "Booking Call Source": string | null
+          "Membership Opportunity": string | null
+          "Membership Sold": string | null
+          "Revenue": number | null
         }
         Insert: {
-          id?: string
-          created_at?: string
-          updated_at?: string | null
-          customer_name?: string | null
-          customer_email?: string | null
-          customer_phone?: string | null
-          opportunity_value?: number | null
-          opportunity_stage?: string | null
-          opportunity_source?: string | null
-          assigned_technician?: string | null
-          scheduled_date?: string | null
-          completion_date?: string | null
-          opportunity_type?: string | null
-          notes?: string | null
-          status?: string | null
+          "Date"?: string | null
+          "Job": number
+          "Tags"?: string | null
+          "Customer"?: string | null
+          "Email"?: string | null
+          "Phone"?: string | null
+          "Location Name"?: string | null
+          "Street"?: string | null
+          "Apt/Suite"?: string | null
+          "City"?: string | null
+          "State"?: string | null
+          "Zip Code"?: number | null
+          "Department"?: string | null
+          "Status"?: string | null
+          "Opportunity Owner"?: string | null
+          "Lead Type"?: string | null
+          "Lead Source"?: string | null
+          "Call Assigned To"?: string | null
+          "Booking Call Source"?: string | null
+          "Membership Opportunity"?: string | null
+          "Membership Sold"?: string | null
+          "Revenue"?: number | null
         }
         Update: {
-          id?: string
-          created_at?: string
-          updated_at?: string | null
-          customer_name?: string | null
-          customer_email?: string | null
-          customer_phone?: string | null
-          opportunity_value?: number | null
-          opportunity_stage?: string | null
-          opportunity_source?: string | null
-          assigned_technician?: string | null
-          scheduled_date?: string | null
-          completion_date?: string | null
-          opportunity_type?: string | null
-          notes?: string | null
-          status?: string | null
+          "Date"?: string | null
+          "Job"?: number
+          "Tags"?: string | null
+          "Customer"?: string | null
+          "Email"?: string | null
+          "Phone"?: string | null
+          "Location Name"?: string | null
+          "Street"?: string | null
+          "Apt/Suite"?: string | null
+          "City"?: string | null
+          "State"?: string | null
+          "Zip Code"?: number | null
+          "Department"?: string | null
+          "Status"?: string | null
+          "Opportunity Owner"?: string | null
+          "Lead Type"?: string | null
+          "Lead Source"?: string | null
+          "Call Assigned To"?: string | null
+          "Booking Call Source"?: string | null
+          "Membership Opportunity"?: string | null
+          "Membership Sold"?: string | null
+          "Revenue"?: number | null
         }
       }
     }

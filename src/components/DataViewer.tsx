@@ -189,9 +189,11 @@ export const DataViewer: React.FC = () => {
                 <span className="font-medium text-blue-900">Customer Info</span>
               </div>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• customer_name (text)</li>
-                <li>• customer_email (text)</li>
-                <li>• customer_phone (text)</li>
+                <li>• Customer (text)</li>
+                <li>• Email (text)</li>
+                <li>• Phone (text)</li>
+                <li>• Location Name (text)</li>
+                <li>• Street, City, State (text)</li>
               </ul>
             </div>
             
@@ -201,26 +203,28 @@ export const DataViewer: React.FC = () => {
                 <span className="font-medium text-green-900">Opportunity Info</span>
               </div>
               <ul className="text-sm text-green-800 space-y-1">
-                <li>• opportunity_value (number)</li>
-                <li>• opportunity_stage (text)</li>
-                <li>• opportunity_type (text)</li>
-                <li>• opportunity_source (text)</li>
-                <li>• status (text)</li>
+                <li>• Revenue (number)</li>
+                <li>• Status (text)</li>
+                <li>• Department (text)</li>
+                <li>• Lead Type (text)</li>
+                <li>• Lead Source (text)</li>
               </ul>
             </div>
             
             <div className="bg-purple-50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Calendar className="w-4 h-4 text-purple-600" />
-                <span className="font-medium text-purple-900">Scheduling & Tracking</span>
+                <span className="font-medium text-purple-900">Management & Tracking</span>
               </div>
               <ul className="text-sm text-purple-800 space-y-1">
-                <li>• created_at (timestamp)</li>
-                <li>• updated_at (timestamp)</li>
-                <li>• scheduled_date (date)</li>
-                <li>• completion_date (date)</li>
-                <li>• assigned_technician (text)</li>
-                <li>• notes (text)</li>
+                <li>• Date (text)</li>
+                <li>• Job (number) - Primary Key</li>
+                <li>• Opportunity Owner (text)</li>
+                <li>• Call Assigned To (text)</li>
+                <li>• Booking Call Source (text)</li>
+                <li>• Tags (text)</li>
+                <li>• Membership Opportunity (text)</li>
+                <li>• Membership Sold (text)</li>
               </ul>
             </div>
           </div>
@@ -275,30 +279,30 @@ export const DataViewer: React.FC = () => {
               <div className="bg-blue-50 rounded-lg p-3">
                 <div className="text-sm font-medium text-blue-900">Opportunity Stages</div>
                 <div className="text-xs text-blue-700 mt-1">
-                  {[...new Set(sampleData.map(row => row.opportunity_stage).filter(Boolean))].slice(0, 3).join(', ')}
-                  {[...new Set(sampleData.map(row => row.opportunity_stage).filter(Boolean))].length > 3 && '...'}
+                  {[...new Set(sampleData.map(row => row.Status).filter(Boolean))].slice(0, 3).join(', ')}
+                  {[...new Set(sampleData.map(row => row.Status).filter(Boolean))].length > 3 && '...'}
                 </div>
               </div>
               
               <div className="bg-green-50 rounded-lg p-3">
                 <div className="text-sm font-medium text-green-900">Value Range</div>
                 <div className="text-xs text-green-700 mt-1">
-                  ${Math.min(...sampleData.map(row => Number(row.opportunity_value) || 0)).toLocaleString()} - 
-                  ${Math.max(...sampleData.map(row => Number(row.opportunity_value) || 0)).toLocaleString()}
+                  ${Math.min(...sampleData.map(row => Number(row.Revenue) || 0)).toLocaleString()} - 
+                  ${Math.max(...sampleData.map(row => Number(row.Revenue) || 0)).toLocaleString()}
                 </div>
               </div>
               
               <div className="bg-purple-50 rounded-lg p-3">
                 <div className="text-sm font-medium text-purple-900">Date Range</div>
                 <div className="text-xs text-purple-700 mt-1">
-                  {sampleData[0]?.created_at?.split('T')[0]} to {sampleData[sampleData.length - 1]?.created_at?.split('T')[0]}
+                  {sampleData[0]?.Date} to {sampleData[sampleData.length - 1]?.Date}
                 </div>
               </div>
               
               <div className="bg-orange-50 rounded-lg p-3">
                 <div className="text-sm font-medium text-orange-900">≥$10k Opportunities</div>
                 <div className="text-xs text-orange-700 mt-1">
-                  {sampleData.filter(row => (Number(row.opportunity_value) || 0) >= 10000).length} found
+                  {sampleData.filter(row => (Number(row.Revenue) || 0) >= 10000).length} found
                 </div>
               </div>
             </div>
@@ -320,12 +324,12 @@ export const DataViewer: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">Created</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Date</th>
                       <th className="px-3 py-2 text-left font-medium text-gray-500">Customer</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">Value</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">Stage</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">Type</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">Technician</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Revenue</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Status</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Department</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Owner</th>
                     </>
                   )}
                 </tr>
@@ -335,7 +339,7 @@ export const DataViewer: React.FC = () => {
                   <tr key={index} className={`hover:bg-gray-50 ${
                     selectedTable === 'SoldLineitems' 
                       ? (Number(row.Price) || 0) >= 10000 ? 'bg-green-50' : ''
-                      : (Number(row.opportunity_value) || 0) >= 10000 ? 'bg-green-50' : ''
+                      : (Number(row.Revenue) || 0) >= 10000 ? 'bg-green-50' : ''
                   }`}>
                     {selectedTable === 'SoldLineitems' ? (
                       <>
@@ -350,14 +354,14 @@ export const DataViewer: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <td className="px-3 py-2 text-gray-900">{row.created_at?.split('T')[0]}</td>
-                        <td className="px-3 py-2 text-gray-600 max-w-xs truncate">{row.customer_name}</td>
-                        <td className={`px-3 py-2 font-medium ${(Number(row.opportunity_value) || 0) >= 10000 ? 'text-green-600' : 'text-gray-900'}`}>
-                          ${(Number(row.opportunity_value) || 0).toLocaleString()}
+                        <td className="px-3 py-2 text-gray-900">{row.Date}</td>
+                        <td className="px-3 py-2 text-gray-600 max-w-xs truncate">{row.Customer}</td>
+                        <td className={`px-3 py-2 font-medium ${(Number(row.Revenue) || 0) >= 10000 ? 'text-green-600' : 'text-gray-900'}`}>
+                          ${(Number(row.Revenue) || 0).toLocaleString()}
                         </td>
-                        <td className="px-3 py-2 text-gray-600">{row.opportunity_stage}</td>
-                        <td className="px-3 py-2 text-gray-600">{row.opportunity_type}</td>
-                        <td className="px-3 py-2 text-gray-600">{row.assigned_technician}</td>
+                        <td className="px-3 py-2 text-gray-600">{row.Status}</td>
+                        <td className="px-3 py-2 text-gray-600">{row.Department}</td>
+                        <td className="px-3 py-2 text-gray-600">{row['Opportunity Owner']}</td>
                       </>
                     )}
                   </tr>
@@ -374,8 +378,8 @@ export const DataViewer: React.FC = () => {
               </>
             ) : (
               <>
-                <p>• Green highlighted rows have Opportunity Value ≥ $10,000 (High-Value Opportunities)</p>
-                <p>• Opportunity stages show the sales pipeline progression</p>
+                <p>• Green highlighted rows have Revenue ≥ $10,000 (High-Value Opportunities)</p>
+                <p>• Status shows the opportunity progression (Open, Closed, etc.)</p>
               </>
             )}
           </div>

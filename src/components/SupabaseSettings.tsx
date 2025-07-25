@@ -16,7 +16,7 @@ export const SupabaseSettings: React.FC = () => {
       name: 'Opportunities',
       displayName: 'Opportunities',
       description: 'Sales opportunities and pipeline data',
-      primaryDateColumn: 'created_at',
+      primaryDateColumn: 'Date',
       isActive: false
     }
   ]);

@@ -124,13 +124,13 @@ export class SupabaseService {
   }
 
   private async getOpportunitiesKPIData(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
-    console.log('🔍 Fetching Opportunities data...');
+    console.log('🔍 Fetching Opportunities data with actual schema...');
     
     // Step 1: Fetch sample data to understand structure
     const samplePromise = supabase
       .from(this.tableName)
-      .select('created_at, opportunity_stage, opportunity_value, opportunity_type, status')
-      .order('created_at', { ascending: false })
+      .select('"Date", "Job", "Customer", "Revenue", "Status", "Department", "Lead Type"')
+      .order('"Date"', { ascending: false })
       .limit(50);
 
     const { data: sampleData, error: sampleError } = await Promise.race([
@@ -157,9 +157,9 @@ export class SupabaseService {
     const filteredPromise = supabase
       .from(this.tableName)
       .select('*')
-      .gte('created_at', dateRange.start.toISOString())
-      .lte('created_at', dateRange.end.toISOString())
-      .order('created_at', { ascending: false });
+      .gte('"Date"', dateRange.start.toISOString().split('T')[0])
+      .lte('"Date"', dateRange.end.toISOString().split('T')[0])
+      .order('"Date"', { ascending: false });
 
     const { data: filteredData, error: filteredError } = await Promise.race([
       filteredPromise,
@@ -327,59 +327,58 @@ export class SupabaseService {
     
     const totalOpportunities = data.length;
     
-    // Opportunity stages analysis
-    const stageGroups = data.reduce((acc, opp) => {
-      const stage = opp.opportunity_stage || 'Unknown';
-      acc[stage] = (acc[stage] || 0) + 1;
+    // Status analysis
+    const statusGroups = data.reduce((acc, opp) => {
+      const status = opp.Status || 'Unknown';
+      acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     
-    console.log('Opportunity stages:', stageGroups);
+    console.log('Opportunity statuses:', statusGroups);
     
-    // Calculate conversion rates based on stages
+    // Calculate conversion rates based on status
     const closedWon = data.filter(opp => 
-      (opp.opportunity_stage || '').toLowerCase().includes('won') ||
-      (opp.opportunity_stage || '').toLowerCase().includes('closed won') ||
-      (opp.status || '').toLowerCase().includes('completed')
+      (opp.Status || '').toLowerCase().includes('won') ||
+      (opp.Status || '').toLowerCase().includes('closed') ||
+      (opp.Status || '').toLowerCase().includes('completed')
     ).length;
     
     const closedLost = data.filter(opp => 
-      (opp.opportunity_stage || '').toLowerCase().includes('lost') ||
-      (opp.opportunity_stage || '').toLowerCase().includes('closed lost') ||
-      (opp.status || '').toLowerCase().includes('cancelled')
+      (opp.Status || '').toLowerCase().includes('lost') ||
+      (opp.Status || '').toLowerCase().includes('cancelled')
     ).length;
     
     // High-value opportunities (≥$10k)
-    const highValueOpps = data.filter(opp => (Number(opp.opportunity_value) || 0) >= 10000);
+    const highValueOpps = data.filter(opp => (Number(opp.Revenue) || 0) >= 10000);
     const installCallsPercentage = totalOpportunities > 0 ? (highValueOpps.length / totalOpportunities) * 100 : 0;
     
     // Average opportunity value
-    const totalValue = data.reduce((sum, opp) => sum + (Number(opp.opportunity_value) || 0), 0);
+    const totalValue = data.reduce((sum, opp) => sum + (Number(opp.Revenue) || 0), 0);
     const avgOpportunityValue = totalOpportunities > 0 ? totalValue / totalOpportunities : 0;
     
-    // Opportunities by type
+    // Opportunities by lead type
     const typeGroups = data.reduce((acc, opp) => {
-      const type = opp.opportunity_type || 'Unknown';
+      const type = opp['Lead Type'] || 'Unknown';
       acc[type] = (acc[type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     
-    console.log('Opportunity types:', typeGroups);
+    console.log('Lead types:', typeGroups);
     
     // Calculate specific service percentages
     const jettingOpps = data.filter(opp => 
-      (opp.opportunity_type || '').toLowerCase().includes('jetting') ||
-      (opp.notes || '').toLowerCase().includes('jetting')
+      (opp.Department || '').toLowerCase().includes('jetting') ||
+      (opp.Tags || '').toLowerCase().includes('jetting')
     ).length;
     
     const descalingOpps = data.filter(opp => 
-      (opp.opportunity_type || '').toLowerCase().includes('descaling') ||
-      (opp.notes || '').toLowerCase().includes('descaling')
+      (opp.Department || '').toLowerCase().includes('descaling') ||
+      (opp.Tags || '').toLowerCase().includes('descaling')
     ).length;
     
     const membershipOpps = data.filter(opp => 
-      (opp.opportunity_type || '').toLowerCase().includes('membership') ||
-      (opp.notes || '').toLowerCase().includes('membership')
+      (opp['Membership Opportunity'] || '').toLowerCase().includes('yes') ||
+      (opp['Membership Sold'] || '').toLowerCase().includes('yes')
     ).length;
     
     console.log('=== OPPORTUNITIES CALCULATION RESULTS ===');
@@ -411,16 +410,16 @@ export class SupabaseService {
   
   async getTimeSeriesData(dateRange: DateRange): Promise<TimeSeriesData[]> {
     try {
-      const dateColumn = this.tableName === 'Opportunities' ? 'created_at' : 'Invoice Date';
+      const dateColumn = this.tableName === 'Opportunities' ? '"Date"' : 'Invoice Date';
       const selectColumns = this.tableName === 'Opportunities' 
-        ? 'created_at, opportunity_value, opportunity_stage, status'
+        ? '"Date", "Revenue", "Status", "Department"'
         : '*';
       
       const { data, error } = await supabase
         .from(this.tableName)
         .select(selectColumns)
-        .gte(dateColumn, this.tableName === 'Opportunities' ? dateRange.start.toISOString() : dateRange.start.toISOString().split('T')[0])
-        .lte(dateColumn, this.tableName === 'Opportunities' ? dateRange.end.toISOString() : dateRange.end.toISOString().split('T')[0])
+        .gte(dateColumn, dateRange.start.toISOString().split('T')[0])
+        .lte(dateColumn, dateRange.end.toISOString().split('T')[0])
         .order(dateColumn, { ascending: true })
 
       if (error) {
@@ -472,7 +471,7 @@ export class SupabaseService {
     const dailyData = new Map<string, any[]>();
     
     rows.forEach(row => {
-      const date = row.created_at.split('T')[0]; // Extract date part
+      const date = row.Date; // Date is already in YYYY-MM-DD format
       if (!dailyData.has(date)) {
         dailyData.set(date, []);
       }
@@ -482,7 +481,7 @@ export class SupabaseService {
     // Calculate daily high-value opportunity percentages
     return Array.from(dailyData.entries()).map(([date, dayData]) => {
       const totalOpps = dayData.length;
-      const highValueOpps = dayData.filter(row => (Number(row.opportunity_value) || 0) >= 10000).length;
+      const highValueOpps = dayData.filter(row => (Number(row.Revenue) || 0) >= 10000).length;
       
       return {
         date,
@@ -495,7 +494,7 @@ export class SupabaseService {
   // Method to get raw data from your table for inspection
   async getRawData(limit: number = 100): Promise<any[]> {
     try {
-      const orderColumn = this.tableName === 'Opportunities' ? 'created_at' : 'Invoice Date';
+      const orderColumn = this.tableName === 'Opportunities' ? '"Date"' : 'Invoice Date';
       
       const { data, error } = await supabase
         .from(this.tableName)
@@ -560,7 +559,7 @@ export class SupabaseService {
       // Test with table-specific columns
       let selectColumns: string;
       if (this.tableName === 'Opportunities') {
-        selectColumns = 'created_at, customer_name, opportunity_value, opportunity_stage';
+        selectColumns = '"Date", "Job", "Customer", "Revenue", "Status"';
       } else {
         selectColumns = '"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"';
       }
@@ -655,10 +654,9 @@ export class SupabaseService {
       });
       
       // Use appropriate primary key column based on table
-      const primaryKeyColumn = this.tableName === 'Opportunities' ? 'id' : '"Primary Key"';
+      const primaryKeyColumn = this.tableName === 'Opportunities' ? '"Job"' : '"Primary Key"';
       
-      // For Opportunities table, use created_at since id doesn't exist
-      const selectColumn = this.tableName === 'Opportunities' ? 'created_at' : primaryKeyColumn;
+      const selectColumn = primaryKeyColumn;
       
       const testPromise = supabase
         .from(this.tableName)
