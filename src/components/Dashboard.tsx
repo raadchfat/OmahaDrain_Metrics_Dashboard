@@ -7,6 +7,8 @@ import { MultiSheetService } from '../services/googleSheets';
 import { SupabaseService } from '../services/supabaseService';
 import { KPIData, TimeFrame, TimeSeriesData, MultiSheetConfig } from '../types';
 import { getDateRangeFromTimeFrame } from '../utils/dateUtils';
+import { KPI_METRICS } from '../utils/kpiMetrics';
+import { getScoringRanges } from '../utils/scoringUtils';
 
 export const Dashboard: React.FC = () => {
   const [kpiData, setKpiData] = useState<KPIData | null>(null);
@@ -320,353 +322,129 @@ export const Dashboard: React.FC = () => {
     {
       title: 'Install Calls Rate',
       value: kpiData.installCallsPercentage,
-      unit: '%',
-      description: '% of Install Calls ($10k+) / Drain Cleaning Calls',
-      formula: 'Install Call Rate% = Count of Install Jobs (≥10k) / Number of Service Calls',
+      metricId: 'installCallsPercentage',
       color: 'blue' as const,
       trend: 'up' as const,
-      trendValue: 5.2,
-      scoreRanges: [
-        { min: 0, max: 1, score: 1 },
-        { min: 1, max: 2, score: 2 },
-        { min: 2, max: 3, score: 3 },
-        { min: 3, max: 4, score: 4 },
-        { min: 4, max: 5, score: 5 },
-        { min: 5, max: 6, score: 6 },
-        { min: 6, max: 7, score: 7 },
-        { min: 7, max: 8, score: 8 },
-        { min: 8, max: 10, score: 9 },
-        { min: 10, max: Infinity, score: 10 }
-      ]
+      trendValue: 5.2
     },
     {
       title: 'Install Revenue per Call',
       value: kpiData.installRevenuePerCall,
-      unit: '$',
-      description: 'Total Install Revenue ($10k+ jobs from Column Y) / Total Number of Rows',
-      formula: 'Install Call Revenue Rate% = Sum of Install Jobs (≥10k) / Number of Service Calls',
+      metricId: 'installRevenuePerCall',
       color: 'green' as const,
       trend: 'up' as const,
-      trendValue: 12.8,
-      scoreRanges: [
-        { min: 0, max: 399, score: 1 },
-        { min: 400, max: 499, score: 2 },
-        { min: 500, max: 599, score: 3 },
-        { min: 600, max: 699, score: 4 },
-        { min: 700, max: 799, score: 5 },
-        { min: 800, max: 899, score: 6 },
-        { min: 900, max: 999, score: 7 },
-        { min: 1000, max: 1099, score: 8 },
-        { min: 1100, max: 1249, score: 9 },
-        { min: 1250, max: Infinity, score: 10 }
-      ]
+      trendValue: 12.8
     },
     {
       title: 'Jetting Jobs Rate',
       value: kpiData.jettingJobsPercentage,
-      unit: '%',
-      description: 'Percentage of unique jobs that included jetting services',
-      formula: 'Jetting Jobs Performed ÷ Total Jobs Performed × 100',
+      metricId: 'jettingJobsPercentage',
       color: 'orange' as const,
       trend: 'down' as const,
-      trendValue: -2.1,
-      scoreRanges: [
-        { min: 0, max: 5, score: 1 },
-        { min: 5, max: 10, score: 2 },
-        { min: 10, max: 15, score: 3 },
-        { min: 15, max: 20, score: 4 },
-        { min: 20, max: 25, score: 5 },
-        { min: 25, max: 30, score: 6 },
-        { min: 30, max: 35, score: 7 },
-        { min: 35, max: 40, score: 8 },
-        { min: 40, max: 50, score: 9 },
-        { min: 50, max: Infinity, score: 10 }
-      ]
+      trendValue: -2.1
     },
     {
       title: 'Jetting Revenue per Call',
       value: kpiData.jettingRevenuePerCall,
-      unit: '$',
-      description: 'Total jetting revenue from all jetting line items divided by total jobs performed',
-      formula: 'Jetting Revenue per Service Call = Total Jetting Revenue ÷ Total Jobs Performed',
+      metricId: 'jettingRevenuePerCall',
       color: 'purple' as const,
       trend: 'up' as const,
-      trendValue: 8.5,
-      scoreRanges: [
-        { min: 0, max: 39, score: 1 },
-        { min: 40, max: 59, score: 2 },
-        { min: 60, max: 79, score: 3 },
-        { min: 80, max: 99, score: 4 },
-        { min: 100, max: 119, score: 5 },
-        { min: 120, max: 139, score: 6 },
-        { min: 140, max: 159, score: 7 },
-        { min: 160, max: 179, score: 8 },
-        { min: 180, max: 199, score: 9 },
-        { min: 200, max: Infinity, score: 10 }
-      ]
+      trendValue: 8.5
     },
     {
       title: 'Descaling Jobs Rate',
       value: kpiData.descalingJobsPercentage,
-      unit: '%',
-      description: 'Percentage of unique Drain Cleaning jobs that included descaling services',
-      formula: 'Descaling Jobs Performed ÷ Drain Cleaning Service Calls Performed × 100',
+      metricId: 'descalingJobsPercentage',
       color: 'blue' as const,
-      trend: 'neutral' as const,
-      scoreRanges: [
-        { min: 0, max: 5, score: 1 },
-        { min: 5, max: 10, score: 2 },
-        { min: 10, max: 15, score: 3 },
-        { min: 15, max: 20, score: 4 },
-        { min: 20, max: 25, score: 5 },
-        { min: 25, max: 30, score: 6 },
-        { min: 30, max: 35, score: 7 },
-        { min: 35, max: 40, score: 8 },
-        { min: 40, max: 50, score: 9 },
-        { min: 50, max: Infinity, score: 10 }
-      ]
+      trend: 'neutral' as const
     },
     {
       title: 'Descaling Revenue per Call',
       value: kpiData.descalingRevenuePerCall,
-      unit: '$',
-      description: 'Total descaling revenue from all descaling line items divided by total Drain Cleaning jobs performed',
-      formula: 'Descaling Revenue per Service Call = Total Descaling Revenue ÷ Total Drain Cleaning Jobs Performed',
+      metricId: 'descalingRevenuePerCall',
       color: 'green' as const,
       trend: 'up' as const,
-      trendValue: 15.3,
-      scoreRanges: [
-        { min: 0, max: 39, score: 1 },
-        { min: 40, max: 59, score: 2 },
-        { min: 60, max: 79, score: 3 },
-        { min: 80, max: 99, score: 4 },
-        { min: 100, max: 119, score: 5 },
-        { min: 120, max: 139, score: 6 },
-        { min: 140, max: 159, score: 7 },
-        { min: 160, max: 179, score: 8 },
-        { min: 180, max: 199, score: 9 },
-        { min: 200, max: Infinity, score: 10 }
-      ]
+      trendValue: 15.3
     },
     {
       title: 'Membership Conversion',
       value: kpiData.membershipConversionRate,
-      unit: '%',
-      description: 'Percentage of customers who sign up for memberships',
-      formula: '(# of New Memberships) ÷ (# of Total Customers) × 100',
+      metricId: 'membershipConversionRate',
       color: 'orange' as const,
       trend: 'up' as const,
-      trendValue: 7.2,
-      scoreRanges: [
-        { min: 0, max: 2, score: 1 },
-        { min: 2, max: 4, score: 2 },
-        { min: 4, max: 6, score: 3 },
-        { min: 6, max: 8, score: 4 },
-        { min: 8, max: 10, score: 5 },
-        { min: 10, max: 12, score: 6 },
-        { min: 12, max: 15, score: 7 },
-        { min: 15, max: 18, score: 8 },
-        { min: 18, max: 22, score: 9 },
-        { min: 22, max: Infinity, score: 10 }
-      ]
+      trendValue: 7.2
     },
     {
       title: 'Memberships Renewed',
       value: kpiData.totalMembershipsRenewed,
-      unit: '',
-      description: 'Total number of memberships renewed this period',
-      formula: 'COUNT(Renewed Memberships)',
+      metricId: 'totalMembershipsRenewed',
       color: 'purple' as const,
       trend: 'up' as const,
-      trendValue: 18.7,
-      scoreRanges: [
-        { min: 0, max: 5, score: 1 },
-        { min: 5, max: 10, score: 2 },
-        { min: 10, max: 20, score: 3 },
-        { min: 20, max: 35, score: 4 },
-        { min: 35, max: 50, score: 5 },
-        { min: 50, max: 75, score: 6 },
-        { min: 75, max: 100, score: 7 },
-        { min: 100, max: 150, score: 8 },
-        { min: 150, max: 200, score: 9 },
-        { min: 200, max: Infinity, score: 10 }
-      ]
+      trendValue: 18.7
     },
     {
       title: 'Tech Pay Percentage',
       value: kpiData.techPayPercentage,
-      unit: '%',
-      description: 'Tech Pay / Total Tech Call Revenue',
-      formula: '(Total Tech Pay) ÷ (Total Tech Call Revenue) × 100',
+      metricId: 'techPayPercentage',
       color: 'red' as const,
       trend: 'down' as const,
-      trendValue: -1.8,
-      scoreRanges: [
-        { min: 50, max: Infinity, score: 1 },
-        { min: 45, max: 50, score: 2 },
-        { min: 40, max: 45, score: 3 },
-        { min: 35, max: 40, score: 4 },
-        { min: 30, max: 35, score: 5 },
-        { min: 25, max: 30, score: 6 },
-        { min: 20, max: 25, score: 7 },
-        { min: 15, max: 20, score: 8 },
-        { min: 10, max: 15, score: 9 },
-        { min: 0, max: 10, score: 10 }
-      ]
+      trendValue: -1.8
     },
     {
       title: 'Labor Revenue per Hour',
       value: kpiData.laborRevenuePerHour,
-      unit: '$',
-      description: 'Labor Revenue / Worked Hours',
-      formula: '(Total Labor Revenue) ÷ (Total Worked Hours)',
+      metricId: 'laborRevenuePerHour',
       color: 'blue' as const,
       trend: 'up' as const,
-      trendValue: 9.4,
-      scoreRanges: [
-        { min: 0, max: 50, score: 1 },
-        { min: 50, max: 75, score: 2 },
-        { min: 75, max: 100, score: 3 },
-        { min: 100, max: 125, score: 4 },
-        { min: 125, max: 150, score: 5 },
-        { min: 150, max: 175, score: 6 },
-        { min: 175, max: 200, score: 7 },
-        { min: 200, max: 250, score: 8 },
-        { min: 250, max: 300, score: 9 },
-        { min: 300, max: Infinity, score: 10 }
-      ]
+      trendValue: 9.4
     },
     {
       title: 'Job Efficiency',
       value: kpiData.jobEfficiency,
-      unit: '%',
-      description: 'Allotted Hours for Repair / Actual Repair Time',
-      formula: '(Allotted Hours for Repair) ÷ (Actual Repair Time) × 100',
+      metricId: 'jobEfficiency',
       color: 'green' as const,
       trend: 'up' as const,
-      trendValue: 3.6,
-      scoreRanges: [
-        { min: 0, max: 60, score: 1 },
-        { min: 60, max: 70, score: 2 },
-        { min: 70, max: 75, score: 3 },
-        { min: 75, max: 80, score: 4 },
-        { min: 80, max: 85, score: 5 },
-        { min: 85, max: 90, score: 6 },
-        { min: 90, max: 95, score: 7 },
-        { min: 95, max: 100, score: 8 },
-        { min: 100, max: 110, score: 9 },
-        { min: 110, max: Infinity, score: 10 }
-      ]
+      trendValue: 3.6
     },
     {
       title: 'Zero Revenue Calls',
       value: kpiData.zeroRevenueCallPercentage,
-      unit: '%',
-      description: 'Percentage of calls that generated no revenue',
-      formula: '(# of $0 Revenue Calls) ÷ (Total # of Calls) × 100',
+      metricId: 'zeroRevenueCallPercentage',
       color: 'red' as const,
       trend: 'down' as const,
-      trendValue: -12.5,
-      scoreRanges: [
-        { min: 20, max: Infinity, score: 1 },
-        { min: 18, max: 20, score: 2 },
-        { min: 15, max: 18, score: 3 },
-        { min: 12, max: 15, score: 4 },
-        { min: 10, max: 12, score: 5 },
-        { min: 8, max: 10, score: 6 },
-        { min: 6, max: 8, score: 7 },
-        { min: 4, max: 6, score: 8 },
-        { min: 2, max: 4, score: 9 },
-        { min: 0, max: 2, score: 10 }
-      ]
+      trendValue: -12.5
     },
     {
       title: 'Diagnostic Fee Only',
       value: kpiData.diagnosticFeeOnlyPercentage,
-      unit: '%',
-      description: 'Percentage of calls that only charged diagnostic fee',
-      formula: '(# of Diagnostic Fee Only Calls) ÷ (Total # of Calls) × 100',
+      metricId: 'diagnosticFeeOnlyPercentage',
       color: 'orange' as const,
       trend: 'down' as const,
-      trendValue: -5.8,
-      scoreRanges: [
-        { min: 40, max: Infinity, score: 1 },
-        { min: 35, max: 40, score: 2 },
-        { min: 30, max: 35, score: 3 },
-        { min: 25, max: 30, score: 4 },
-        { min: 20, max: 25, score: 5 },
-        { min: 15, max: 20, score: 6 },
-        { min: 12, max: 15, score: 7 },
-        { min: 8, max: 12, score: 8 },
-        { min: 5, max: 8, score: 9 },
-        { min: 0, max: 5, score: 10 }
-      ]
+      trendValue: -5.8
     },
     {
       title: 'Callback Rate',
       value: kpiData.callbackPercentage,
-      unit: '%',
-      description: 'Percentage of jobs that required a callback',
-      formula: '(# of Callback Jobs) ÷ (Total # of Jobs) × 100',
+      metricId: 'callbackPercentage',
       color: 'red' as const,
       trend: 'down' as const,
-      trendValue: -8.2,
-      scoreRanges: [
-        { min: 15, max: Infinity, score: 1 },
-        { min: 12, max: 15, score: 2 },
-        { min: 10, max: 12, score: 3 },
-        { min: 8, max: 10, score: 4 },
-        { min: 6, max: 8, score: 5 },
-        { min: 5, max: 6, score: 6 },
-        { min: 4, max: 5, score: 7 },
-        { min: 3, max: 4, score: 8 },
-        { min: 2, max: 3, score: 9 },
-        { min: 0, max: 2, score: 10 }
-      ]
+      trendValue: -8.2
     },
     {
       title: 'Client Complaints',
       value: kpiData.clientComplaintPercentage,
-      unit: '%',
-      description: 'Percentage of jobs that resulted in complaints',
-      formula: '(# of Jobs with Complaints) ÷ (Total # of Jobs) × 100',
+      metricId: 'clientComplaintPercentage',
       color: 'red' as const,
       trend: 'down' as const,
-      trendValue: -15.3,
-      scoreRanges: [
-        { min: 10, max: Infinity, score: 1 },
-        { min: 8, max: 10, score: 2 },
-        { min: 6, max: 8, score: 3 },
-        { min: 5, max: 6, score: 4 },
-        { min: 4, max: 5, score: 5 },
-        { min: 3, max: 4, score: 6 },
-        { min: 2, max: 3, score: 7 },
-        { min: 1.5, max: 2, score: 8 },
-        { min: 1, max: 1.5, score: 9 },
-        { min: 0, max: 1, score: 10 }
-      ]
+      trendValue: -15.3
     },
     {
       title: 'Client Reviews',
       value: kpiData.clientReviewPercentage,
-      unit: '%',
-      description: 'Percentage of customers who left reviews',
-      formula: '(# of Customer Reviews) ÷ (Total # of Customers) × 100',
+      metricId: 'clientReviewPercentage',
       color: 'green' as const,
       trend: 'up' as const,
-      trendValue: 22.1,
-      scoreRanges: [
-        { min: 0, max: 10, score: 1 },
-        { min: 10, max: 20, score: 2 },
-        { min: 20, max: 30, score: 3 },
-        { min: 30, max: 40, score: 4 },
-        { min: 40, max: 50, score: 5 },
-        { min: 50, max: 60, score: 6 },
-        { min: 60, max: 70, score: 7 },
-        { min: 70, max: 80, score: 8 },
-        { min: 80, max: 90, score: 9 },
-        { min: 90, max: Infinity, score: 10 }
-      ]
+      trendValue: 22.1
     }
   ];
 
@@ -724,18 +502,26 @@ export const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {kpiCards.map((card, index) => (
+          (() => {
+            const metric = KPI_METRICS.find(m => m.id === card.metricId);
+            const customRanges = getScoringRanges(card.metricId);
+            const scoreRanges = customRanges.length > 0 ? customRanges : metric?.defaultRanges || [];
+            
+            return (
           <KPICard
             key={index}
             title={card.title}
             value={card.value}
-            unit={card.unit}
-            description={card.description}
-            formula={card.formula}
+            unit={metric?.unit || ''}
+            description={metric?.description || ''}
+            formula={metric?.formula || ''}
             color={card.color}
             trend={card.trend}
             trendValue={card.trendValue}
-            scoreRanges={card.scoreRanges}
+            scoreRanges={scoreRanges}
           />
+            );
+          })()
         ))}
       </div>
 

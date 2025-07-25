@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, TestTube, Key, Database, Clock, AlertCircle, Plus, Trash2, Edit3, ToggleLeft, ToggleRight } from 'lucide-react';
 import { GoogleSheetConfig, MultiSheetConfig } from '../types';
 import { SupabaseSettings } from './SupabaseSettings';
+import { ScoringSettings } from './ScoringSettings';
 
 export const Settings: React.FC = () => {
   const [config, setConfig] = useState<MultiSheetConfig>({
@@ -122,6 +123,9 @@ export const Settings: React.FC = () => {
 
       {/* Supabase Settings */}
       <SupabaseSettings />
+
+      {/* Scoring Settings */}
+      <ScoringSettings />
 
       {/* Global API Key */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

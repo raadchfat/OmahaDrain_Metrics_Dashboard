@@ -37,6 +37,22 @@ export interface GoogleSheetConfig {
 export interface MultiSheetConfig {
   sheets: GoogleSheetConfig[];
   globalApiKey: string;
+  scoringRanges?: Record<string, ScoreRange[]>;
+}
+
+export interface ScoreRange {
+  min: number;
+  max: number;
+  score: number;
+}
+
+export interface KPIMetric {
+  id: string;
+  name: string;
+  unit: string;
+  description: string;
+  formula: string;
+  defaultRanges: ScoreRange[];
 }
 
 export interface User {

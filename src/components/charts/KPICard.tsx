@@ -1,5 +1,7 @@
 import React from 'react';
 import { Info, TrendingUp, TrendingDown } from 'lucide-react';
+import { ScoreRange } from '../../types';
+import { getScoreFromValue } from '../../utils/scoringUtils';
 
 interface KPICardProps {
   title: string;
@@ -10,7 +12,7 @@ interface KPICardProps {
   trend?: 'up' | 'down' | 'neutral';
   trendValue?: number;
   color?: 'blue' | 'green' | 'orange' | 'red' | 'purple';
-  scoreRanges?: { min: number; max: number; score: number }[];
+  scoreRanges?: ScoreRange[];
 }
 
 const colorClasses = {
@@ -21,17 +23,6 @@ const colorClasses = {
   purple: 'bg-purple-500'
 };
 
-const getScoreFromValue = (value: number, scoreRanges?: { min: number; max: number; score: number }[]): number => {
-  if (!scoreRanges) return 0;
-  
-  for (const range of scoreRanges) {
-    if (value >= range.min && (range.max === Infinity || value < range.max)) {
-      return range.score;
-    }
-  }
-  
-  return 0;
-};
 export const KPICard: React.FC<KPICardProps> = ({
   title,
   value,
