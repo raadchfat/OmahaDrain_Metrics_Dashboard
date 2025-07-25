@@ -9,6 +9,20 @@ export class SupabaseService {
     this.tableName = tableName;
   }
   
+  // Helper method to get the correct database table name
+  private getDbTableName(logicalName: string): string {
+    switch (logicalName) {
+      case 'SoldLineitems':
+        return 'soldlineitems'; // lowercase as per PostgreSQL convention
+      case 'Opportunities':
+        return 'opportunities'; // lowercase as per PostgreSQL convention
+      case 'Jobs_revenue':
+        return 'Jobs_revenue'; // keep original casing for this table
+      default:
+        return logicalName.toLowerCase();
+    }
+  }
+
   // Method to set the table name dynamically
   setTableName(tableName: string) {
     this.tableName = tableName;
@@ -49,7 +63,7 @@ export class SupabaseService {
       // Step 1: Fetch ALL data first to understand the date range
       console.log('🔍 Step 1: Fetching sample data to understand date format...');
       const samplePromise = supabase
-        .from(this.tableName)
+        .from(this.getDbTableName(this.tableName))
         .select('"Invoice Date", "Department", "Price", "Job"')
         .order('Invoice Date', { ascending: false })
         .limit(50);
@@ -86,7 +100,7 @@ export class SupabaseService {
       });
 
       const filteredPromise = supabase
-        .from(this.tableName)
+        .from(this.getDbTableName(this.tableName))
         .select('"Customer ID", "Invoice Date", "Department", "Price", "Line Item", "Job", "Customer"')
         .gte('Invoice Date', dateRange.start.toISOString().split('T')[0])
         .lte('Invoice Date', dateRange.end.toISOString().split('T')[0])
@@ -130,7 +144,7 @@ export class SupabaseService {
     
     // Step 1: Fetch sample data to understand structure
     const samplePromise = supabase
-      .from(this.tableName)
+      .from(this.getDbTableName(this.tableName))
       .select('"Date", "Job", "Customer", "Revenue", "Status", "Department", "Lead Type"')
       .order('"Date"', { ascending: false })
       .limit(50);
@@ -157,7 +171,7 @@ export class SupabaseService {
 
     // Step 2: Fetch filtered data
     const filteredPromise = supabase
-      .from(this.tableName)
+      .from(this.getDbTableName(this.tableName))
       .select('*')
       .gte('"Date"', dateRange.start.toISOString().split('T')[0])
       .lte('"Date"', dateRange.end.toISOString().split('T')[0])
@@ -191,7 +205,7 @@ export class SupabaseService {
     
     // Step 1: Fetch sample data to understand structure
     const samplePromise = supabase
-      .from('"Jobs_revenue"')
+      .from(this.getDbTableName(this.tableName))
       .select('"Completed", "Job", "Customer", "Revenue", "Department", "Owner"')
       .order('"Job"', { ascending: false })
       .limit(50);
@@ -220,7 +234,7 @@ export class SupabaseService {
     // Step 2: For Jobs_revenue, we don't have date filtering since there's no date column
     // We'll use all available data
     const allDataPromise = supabase
-      .from('"Jobs_revenue"')
+      .from(this.getDbTableName(this.tableName))
       .select('*')
       .order('"Job"', { ascending: false });
 
@@ -564,7 +578,7 @@ export class SupabaseService {
         : '*';
       
       const { data, error } = await supabase
-        .from(this.tableName)
+        .from(this.getDbTableName(this.tableName))
         .select(selectColumns)
         .gte(dateColumn, dateRange.start.toISOString().split('T')[0])
         .lte(dateColumn, dateRange.end.toISOString().split('T')[0])
@@ -674,20 +688,16 @@ export class SupabaseService {
   async getRawData(limit: number = 100): Promise<any[]> {
     try {
       let orderColumn: string;
-      let tableName: string;
       if (this.tableName === 'Opportunities') {
         orderColumn = '"Date"';
-        tableName = '"Opportunities"';
       } else if (this.tableName === 'Jobs_revenue') {
         orderColumn = '"Job"';
-        tableName = '"Jobs_revenue"';
       } else {
         orderColumn = '"Invoice Date"';
-        tableName = '"SoldLineitems"';
       }
       
       const { data, error } = await supabase
-        .from(tableName)
+        .from(this.getDbTableName(this.tableName))
         .select('*')
         .order(orderColumn, { ascending: false })
         .limit(limit)
@@ -713,7 +723,7 @@ export class SupabaseService {
       
       // Test if table exists and is accessible
       const testPromise = supabase
-        .from(this.tableName)
+        .from(this.getDbTableName(this.tableName))
         .select('count', { count: 'exact', head: true });
 
       const { count, error } = await Promise.race([testPromise, timeoutPromise]) as any;
@@ -748,23 +758,20 @@ export class SupabaseService {
       
       // Test with table-specific columns
       let selectColumns: string;
-      let tableName: string;
       if (this.tableName === 'Opportunities') {
         selectColumns = '"Date", "Job", "Customer", "Revenue", "Status"';
-        tableName = '"Opportunities"';
       } else if (this.tableName === 'Jobs_revenue') {
         selectColumns = '"Job", "Customer", "Revenue", "Department", "Completed"';
-        tableName = '"Jobs_revenue"';
       } else {
         selectColumns = '"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"';
-        tableName = '"SoldLineitems"';
       }
       
+      const dbTableName = this.getDbTableName(this.tableName);
       console.log('Testing with columns:', selectColumns);
-      console.log('Using table name:', tableName);
+      console.log('Using table name:', dbTableName);
       
       const dataTestPromise = supabase
-        .from(tableName)
+        .from(dbTableName)
         .select(selectColumns)
         .limit(5);
 
@@ -800,7 +807,7 @@ export class SupabaseService {
         // Try to get count as fallback
         try {
           const { count } = await supabase
-            .from(this.tableName)
+            .from(this.getDbTableName(this.tableName))
             .select('*', { count: 'exact', head: true });
           
           if (count === 0) {
@@ -829,7 +836,7 @@ export class SupabaseService {
       let approximateCount = 'unknown';
       try {
         const { count } = await supabase
-          .from(this.tableName)
+          .from(this.getDbTableName(this.tableName))
           .select('*', { count: 'exact', head: true });
         approximateCount = count ? count.toString() : 'many';
       } catch (countError) {
@@ -866,7 +873,7 @@ export class SupabaseService {
       const selectColumn = primaryKeyColumn;
       
       const testPromise = supabase
-        .from(this.tableName)
+        .from(this.getDbTableName(this.tableName))
         .select(selectColumn)
         .limit(1);
 
@@ -886,17 +893,8 @@ export class SupabaseService {
 
   async getTotalCount(): Promise<{ count: number }> {
     try {
-      let tableName: string;
-      if (this.tableName === 'Opportunities') {
-        tableName = '"Opportunities"';
-      } else if (this.tableName === 'Jobs_revenue') {
-        tableName = '"Jobs_revenue"';
-      } else {
-        tableName = '"SoldLineitems"';
-      }
-      
       const { count, error } = await supabase
-        .from(tableName)
+        .from(this.getDbTableName(this.tableName))
         .select('*', { count: 'exact', head: true })
 
       if (error) {
