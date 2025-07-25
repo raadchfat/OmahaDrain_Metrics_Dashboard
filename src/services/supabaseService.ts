@@ -733,7 +733,7 @@ export class SupabaseService {
 
   async testConnectionDetailed(): Promise<{ success: boolean; message: string; rowCount?: number }> {
     try {
-      console.log('🔍 Testing Supabase connection...');
+      console.log('🔍 Testing Supabase connection for table:', this.tableName);
       console.log('Table name:', this.tableName);
       console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
       
@@ -751,6 +751,8 @@ export class SupabaseService {
         selectColumns = '"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"';
       }
       
+      console.log('Testing with columns:', selectColumns);
+      
       const dataTestPromise = supabase
         .from(this.tableName)
         .select(selectColumns)
@@ -758,7 +760,11 @@ export class SupabaseService {
 
       const { data, error } = await Promise.race([dataTestPromise, timeoutPromise]) as any;
 
-      console.log('Query result:', { data: data?.length, error });
+      console.log('Query result for', this.tableName, ':', { 
+        dataRows: data?.length, 
+        error: error?.message || 'none',
+        errorCode: error?.code || 'none'
+      });
       
       if (error) {
         console.error('❌ Supabase error:', error);

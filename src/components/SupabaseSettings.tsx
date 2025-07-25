@@ -29,8 +29,10 @@ export const SupabaseSettings: React.FC = () => {
     }
   ]);
   
-  // Debug log for available tables
+  // Debug logs for troubleshooting
   console.log("Available tables: ", tableConfigs);
+  console.log("Jobs_revenue table config: ", tableConfigs.find(t => t.name === 'Jobs_revenue'));
+  console.log("Active tables: ", tableConfigs.filter(t => t.isActive));
   
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionResults, setConnectionResults] = useState<Record<string, { status: 'idle' | 'success' | 'error', message: string }>>({});
@@ -73,18 +75,25 @@ export const SupabaseSettings: React.FC = () => {
     
     const tablesToTest = tableName ? [tableName] : tableConfigs.filter(config => config.isActive).map(config => config.name);
     
+    console.log('🧪 Testing connections for tables:', tablesToTest);
+    
     for (const table of tablesToTest) {
       setConnectionResults(prev => ({
         ...prev,
         [table]: { status: 'idle', message: 'Testing...' }
       }));
+      
+      console.log(`🔍 Testing table: "${table}" (case-sensitive)`);
     }
 
     try {
       for (const table of tablesToTest) {
         try {
+          console.log(`📊 Creating SupabaseService for table: "${table}"`);
           const supabaseService = new SupabaseService(table);
           const result = await supabaseService.testConnectionDetailed();
+          
+          console.log(`📋 Test result for "${table}":`, result);
 
           if (result.success) {
             setConnectionResults(prev => ({
@@ -95,14 +104,17 @@ export const SupabaseSettings: React.FC = () => {
             // Only fetch sample data for the active table
             if (table === activeTable && result.rowCount && result.rowCount > 0) {
               try {
+                console.log(`📄 Fetching sample data for active table: "${table}"`);
                 const sampleData = await supabaseService.getRawData(5);
                 setRawData(sampleData);
                 setShowRawData(true);
+                console.log(`✅ Sample data fetched for "${table}":`, sampleData.length, 'rows');
               } catch (error) {
                 console.warn('Could not fetch sample data:', error);
               }
             }
           } else {
+            console.error(`❌ Connection failed for "${table}":`, result.message);
             setConnectionResults(prev => ({
               ...prev,
               [table]: { status: 'error', message: result.message }
@@ -110,6 +122,7 @@ export const SupabaseSettings: React.FC = () => {
           }
         } catch (error) {
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`💥 Exception testing "${table}":`, errorMsg);
           setConnectionResults(prev => ({
             ...prev,
             [table]: { status: 'error', message: `Connection failed: ${errorMsg}` }
@@ -184,6 +197,11 @@ export const SupabaseSettings: React.FC = () => {
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Available Tables</h3>
           
+          {/* Debug: Show table count */}
+          <div className="text-xs text-gray-500 mb-2">
+            Found {tableConfigs.length} tables configured. Active: {tableConfigs.filter(t => t.isActive).length}
+          </div>
+          
           {tableConfigs.map(table => (
             <SettingsTable
               key={table.name}
@@ -199,6 +217,13 @@ export const SupabaseSettings: React.FC = () => {
               isTestingConnection={isTestingConnection}
             />
           ))}
+          
+          {/* Debug: Show if Jobs_revenue is missing */}
+          {!tableConfigs.find(t => t.name === 'Jobs_revenue') && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm text-red-800">⚠️ Jobs_revenue table not found in configuration!</p>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-4">

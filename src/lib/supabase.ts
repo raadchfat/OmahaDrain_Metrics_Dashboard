@@ -126,64 +126,64 @@ export type Database = {
     }
     Jobs_revenue: {
       Row: {
-        "Completed": text | null
-        "Invoice": bigint | null
-        "Customer": text | null
-        "Email": text | null
-        "Phone": text | null
-        "Billing Street": text | null
-        "Billing Apt/Suite": text | null
-        "Billing City": text | null
-        "Billing State": text | null
-        "Billing Zip Code": bigint | null
-        "Job": bigint
-        "Location Name": text | null
-        "Service Street": text | null
-        "Service Zip Code": bigint | null
-        "Department": text | null
-        "Owner": text | null
+        "Completed": string | null
+        "Invoice": number | null
+        "Customer": string | null
+        "Email": string | null
+        "Phone": string | null
+        "Billing Street": string | null
+        "Billing Apt/Suite": string | null
+        "Billing City": string | null
+        "Billing State": string | null
+        "Billing Zip Code": number | null
+        "Job": number
+        "Location Name": string | null
+        "Service Street": string | null
+        "Service Zip Code": number | null
+        "Department": string | null
+        "Owner": string | null
         "Revenue": number | null
-        "Balance": text | null
+        "Balance": string | null
       }
       Insert: {
-        "Completed"?: text | null
-        "Invoice"?: bigint | null
-        "Customer"?: text | null
-        "Email"?: text | null
-        "Phone"?: text | null
-        "Billing Street"?: text | null
-        "Billing Apt/Suite"?: text | null
-        "Billing City"?: text | null
-        "Billing State"?: text | null
-        "Billing Zip Code"?: bigint | null
-        "Job": bigint
-        "Location Name"?: text | null
-        "Service Street"?: text | null
-        "Service Zip Code"?: bigint | null
-        "Department"?: text | null
-        "Owner"?: text | null
+        "Completed"?: string | null
+        "Invoice"?: number | null
+        "Customer"?: string | null
+        "Email"?: string | null
+        "Phone"?: string | null
+        "Billing Street"?: string | null
+        "Billing Apt/Suite"?: string | null
+        "Billing City"?: string | null
+        "Billing State"?: string | null
+        "Billing Zip Code"?: number | null
+        "Job": number
+        "Location Name"?: string | null
+        "Service Street"?: string | null
+        "Service Zip Code"?: number | null
+        "Department"?: string | null
+        "Owner"?: string | null
         "Revenue"?: number | null
-        "Balance"?: text | null
+        "Balance"?: string | null
       }
       Update: {
-        "Completed"?: text | null
-        "Invoice"?: bigint | null
-        "Customer"?: text | null
-        "Email"?: text | null
-        "Phone"?: text | null
-        "Billing Street"?: text | null
-        "Billing Apt/Suite"?: text | null
-        "Billing City"?: text | null
-        "Billing State"?: text | null
-        "Billing Zip Code"?: bigint | null
-        "Job"?: bigint
-        "Location Name"?: text | null
-        "Service Street"?: text | null
-        "Service Zip Code"?: bigint | null
-        "Department"?: text | null
-        "Owner"?: text | null
+        "Completed"?: string | null
+        "Invoice"?: number | null
+        "Customer"?: string | null
+        "Email"?: string | null
+        "Phone"?: string | null
+        "Billing Street"?: string | null
+        "Billing Apt/Suite"?: string | null
+        "Billing City"?: string | null
+        "Billing State"?: string | null
+        "Billing Zip Code"?: number | null
+        "Job"?: number
+        "Location Name"?: string | null
+        "Service Street"?: string | null
+        "Service Zip Code"?: number | null
+        "Department"?: string | null
+        "Owner"?: string | null
         "Revenue"?: number | null
-        "Balance"?: text | null
+        "Balance"?: string | null
       }
     }
   }
