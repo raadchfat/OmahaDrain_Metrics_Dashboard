@@ -417,6 +417,13 @@ export const DataViewer: React.FC = () => {
           
           {/* Data Table */}
           <div className="overflow-x-auto">
+            {selectedTable === 'Jobs_revenue' && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>Note:</strong> The Jobs_revenue table doesn't have a date column, so it shows all jobs regardless of the selected time frame in the dashboard.
+                </p>
+              </div>
+            )}
             <table className="min-w-full divide-y divide-gray-200 text-xs">
               <thead className="bg-gray-50">
                 <tr>

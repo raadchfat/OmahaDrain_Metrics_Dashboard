@@ -186,6 +186,7 @@ export class SupabaseService {
 
   private async getJobsRevenueKPIData(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
     console.log('🔍 Fetching Jobs_revenue data...');
+    console.log('⚠️ Note: Jobs_revenue table does not have a date column, so date filtering is not applied');
     
     // Step 1: Fetch sample data to understand structure
     const samplePromise = supabase
@@ -211,6 +212,7 @@ export class SupabaseService {
 
     console.log('✅ Jobs_revenue sample data retrieved:', {
       totalRows: sampleData.length,
+      note: 'This table shows all jobs regardless of date range',
       sampleData: sampleData.slice(0, 3)
     });
 
@@ -232,7 +234,8 @@ export class SupabaseService {
     }
 
     console.log('✅ Jobs_revenue data fetch result:', {
-      rowsFound: allData?.length || 0
+      rowsFound: allData?.length || 0,
+      note: 'All jobs included (no date filtering available for this table)'
     });
 
     if (!allData || allData.length === 0) {

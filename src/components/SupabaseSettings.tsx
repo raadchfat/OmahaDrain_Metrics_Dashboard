@@ -17,14 +17,14 @@ export const SupabaseSettings: React.FC = () => {
       displayName: 'Opportunities',
       description: 'Sales opportunities and pipeline data',
       primaryDateColumn: 'Date',
-      isActive: false
+      isActive: true
     },
     {
       name: 'Jobs_revenue',
       displayName: 'Jobs Revenue',
       description: 'Completed job revenue and billing information',
       primaryDateColumn: 'Job',
-      isActive: false
+      isActive: true
     }
   ]);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -130,6 +130,7 @@ export const SupabaseSettings: React.FC = () => {
           <h3 className="font-semibold text-blue-900 mb-2">Multi-Table Setup Instructions</h3>
           <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
             <li>Click the "Connect to Supabase" button in the top right corner</li>
+            <li><strong>All three tables (SoldLineitems, Opportunities, Jobs_revenue) are now active by default</strong></li>
             <li>Toggle tables on/off to control which data sources are active</li>
             <li>Select your primary table for KPI calculations</li>
             <li>Test connections to verify we can read your data</li>
@@ -137,6 +138,43 @@ export const SupabaseSettings: React.FC = () => {
           </ol>
         </div>
 
+        {/* Connection Status Summary */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <h3 className="font-semibold text-gray-900 mb-3">Connection Status Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {tableConfigs.map((config) => {
+              const result = connectionResults[config.name];
+              return (
+                <div key={config.name} className={`p-3 rounded-lg border-2 ${
+                  result?.status === 'success' ? 'bg-green-50 border-green-200' :
+                  result?.status === 'error' ? 'bg-red-50 border-red-200' :
+                  config.isActive ? 'bg-blue-50 border-blue-200' : 'bg-gray-100 border-gray-200'
+                }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    {result?.status === 'success' && <CheckCircle className="w-4 h-4 text-green-600" />}
+                    {result?.status === 'error' && <XCircle className="w-4 h-4 text-red-600" />}
+                    {!result && config.isActive && <AlertCircle className="w-4 h-4 text-blue-600" />}
+                    {!result && !config.isActive && <div className="w-4 h-4 rounded-full bg-gray-400" />}
+                    <span className="font-medium text-sm">{config.displayName}</span>
+                  </div>
+                  <div className="text-xs">
+                    {result?.status === 'success' && <span className="text-green-700">✓ Connected</span>}
+                    {result?.status === 'error' && <span className="text-red-700">✗ Failed</span>}
+                    {!result && config.isActive && <span className="text-blue-700">? Not tested</span>}
+                    {!result && !config.isActive && <span className="text-gray-600">○ Inactive</span>}
+                  </div>
+                  {config.name === activeTable && (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Primary Table
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
         {/* Table Configuration */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Available Tables</h3>
@@ -148,6 +186,7 @@ export const SupabaseSettings: React.FC = () => {
                   <button
                     onClick={() => toggleTableActive(config.name)}
                     className={`p-1 rounded ${config.isActive ? 'text-green-600' : 'text-gray-400'}`}
+                    title={config.isActive ? 'Table is active - click to disable' : 'Table is inactive - click to enable'}
                   >
                     {config.isActive ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6" />}
                   </button>
@@ -155,6 +194,18 @@ export const SupabaseSettings: React.FC = () => {
                     <h4 className="font-medium text-gray-900">{config.displayName}</h4>
                     <p className="text-sm text-gray-600">{config.description}</p>
                     <p className="text-xs text-gray-500 font-mono">Table: {config.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        config.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {config.isActive ? '● Active' : '○ Inactive'}
+                      </span>
+                      {config.name === 'Jobs_revenue' && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          No Date Filter
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 

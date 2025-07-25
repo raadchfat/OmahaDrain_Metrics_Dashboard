@@ -168,6 +168,12 @@ export const Dashboard: React.FC = () => {
         setConnectionStatus('success');
         setConnectionMessage(`Successfully calculated KPIs from your ${tableName} table for ${timeFrame}! Found real data.`);
         setDataSource('supabase');
+        
+        // Add special note for Jobs_revenue table
+        if (tableName === 'Jobs_revenue') {
+          setConnectionMessage(`Successfully calculated KPIs from your ${tableName} table! Note: This table shows all jobs (no date filtering available).`);
+        }
+        
         console.log('Supabase data loading completed successfully');
         return;
       } catch (supabaseError) {
