@@ -67,7 +67,7 @@ export interface DateRange {
   end: Date;
 }
 
-export type TimeFrame = 'today' | 'yesterday' | 'week' | 'lastweek' | 'month' | 'quarter' | 'year' | 'custom';
+export type TimeFrame = 'today' | 'yesterday' | 'week' | 'lastweek' | 'month' | 'lastmonth' | 'quarter' | 'year' | 'currentyear' | 'custom';
 
 export type TableName = 'SoldLineitems' | 'Opportunities' | 'Jobs_revenue';
 

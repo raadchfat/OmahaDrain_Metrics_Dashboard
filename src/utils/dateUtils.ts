@@ -100,6 +100,14 @@ export function getDateRangeFromTimeFrame(timeFrame: TimeFrame): DateRange {
         end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
       };
       
+    case 'currentyear':
+      // Current year from January 1st to now
+      const currentYearStart = new Date(today.getFullYear(), 0, 1, 0, 0, 0, 0);
+      return {
+        start: currentYearStart,
+        end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+      };
+      
     default:
       return {
         start: today,
