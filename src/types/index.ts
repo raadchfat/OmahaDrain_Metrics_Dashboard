@@ -69,7 +69,7 @@ export interface DateRange {
 
 export type TimeFrame = 'today' | 'yesterday' | 'week' | 'lastweek' | 'month' | 'quarter' | 'year' | 'custom';
 
-export type TableName = 'SoldLineitems' | 'Opportunities';
+export type TableName = 'SoldLineitems' | 'Opportunities' | 'Jobs_revenue';
 
 export interface TableConfig {
   name: TableName;

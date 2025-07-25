@@ -124,5 +124,67 @@ export type Database = {
         }
       }
     }
+    Jobs_revenue: {
+      Row: {
+        "Completed": string | null
+        "Invoice": number | null
+        "Customer": string | null
+        "Email": string | null
+        "Phone": string | null
+        "Billing Street": string | null
+        "Billing Apt/Suite": string | null
+        "Billing City": string | null
+        "Billing State": string | null
+        "Billing Zip Code": number | null
+        "Job": number
+        "Location Name": string | null
+        "Service Street": string | null
+        "Service Zip Code": number | null
+        "Department": string | null
+        "Owner": string | null
+        "Revenue": number | null
+        "Balance": string | null
+      }
+      Insert: {
+        "Completed"?: string | null
+        "Invoice"?: number | null
+        "Customer"?: string | null
+        "Email"?: string | null
+        "Phone"?: string | null
+        "Billing Street"?: string | null
+        "Billing Apt/Suite"?: string | null
+        "Billing City"?: string | null
+        "Billing State"?: string | null
+        "Billing Zip Code"?: number | null
+        "Job": number
+        "Location Name"?: string | null
+        "Service Street"?: string | null
+        "Service Zip Code"?: number | null
+        "Department"?: string | null
+        "Owner"?: string | null
+        "Revenue"?: number | null
+        "Balance"?: string | null
+      }
+      Update: {
+        "Completed"?: string | null
+        "Invoice"?: number | null
+        "Customer"?: string | null
+        "Email"?: string | null
+        "Phone"?: string | null
+        "Billing Street"?: string | null
+        "Billing Apt/Suite"?: string | null
+        "Billing City"?: string | null
+        "Billing State"?: string | null
+        "Billing Zip Code"?: number | null
+        "Job"?: number
+        "Location Name"?: string | null
+        "Service Street"?: string | null
+        "Service Zip Code"?: number | null
+        "Department"?: string | null
+        "Owner"?: string | null
+        "Revenue"?: number | null
+        "Balance"?: string | null
+      }
+    }
   }
 }

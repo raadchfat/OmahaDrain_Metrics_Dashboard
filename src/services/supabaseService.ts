@@ -34,6 +34,8 @@ export class SupabaseService {
       // Route to appropriate KPI calculation based on table
       if (this.tableName === 'Opportunities') {
         return this.getOpportunitiesKPIData(dateRange, timeoutPromise);
+      } else if (this.tableName === 'Jobs_revenue') {
+        return this.getJobsRevenueKPIData(dateRange, timeoutPromise);
       } else {
         return this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
       }
@@ -180,6 +182,64 @@ export class SupabaseService {
     }
 
     return this.calculateKPIsFromOpportunities(filteredData);
+  }
+
+  private async getJobsRevenueKPIData(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
+    console.log('🔍 Fetching Jobs_revenue data...');
+    
+    // Step 1: Fetch sample data to understand structure
+    const samplePromise = supabase
+      .from(this.tableName)
+      .select('"Completed", "Job", "Customer", "Revenue", "Department", "Owner"')
+      .order('"Job"', { ascending: false })
+      .limit(50);
+
+    const { data: sampleData, error: sampleError } = await Promise.race([
+      samplePromise,
+      timeoutPromise
+    ]) as any;
+
+    if (sampleError) {
+      console.error('❌ Error fetching Jobs_revenue sample data:', sampleError);
+      throw new Error(`Failed to fetch Jobs_revenue data: ${sampleError.message}`);
+    }
+
+    if (!sampleData || sampleData.length === 0) {
+      console.warn('⚠️ No Jobs_revenue data found');
+      return this.getDefaultKPIData();
+    }
+
+    console.log('✅ Jobs_revenue sample data retrieved:', {
+      totalRows: sampleData.length,
+      sampleData: sampleData.slice(0, 3)
+    });
+
+    // Step 2: For Jobs_revenue, we don't have date filtering since there's no date column
+    // We'll use all available data
+    const allDataPromise = supabase
+      .from(this.tableName)
+      .select('*')
+      .order('"Job"', { ascending: false });
+
+    const { data: allData, error: allDataError } = await Promise.race([
+      allDataPromise,
+      timeoutPromise
+    ]) as any;
+
+    if (allDataError) {
+      console.error('❌ Jobs_revenue data fetch error:', allDataError);
+      throw new Error(`Jobs_revenue data fetch failed: ${allDataError.message}`);
+    }
+
+    console.log('✅ Jobs_revenue data fetch result:', {
+      rowsFound: allData?.length || 0
+    });
+
+    if (!allData || allData.length === 0) {
+      return this.getDefaultKPIData();
+    }
+
+    return this.calculateKPIsFromJobsRevenue(allData);
   }
 
   // Calculate KPIs from SoldLineitems data
@@ -408,6 +468,90 @@ export class SupabaseService {
     };
   }
   
+  // Calculate KPIs from Jobs_revenue data
+  private calculateKPIsFromJobsRevenue(data: any[]): KPIData {
+    console.log('=== CALCULATING JOBS_REVENUE KPIs ===');
+    console.log('Total jobs received:', data.length);
+    
+    if (data.length > 0) {
+      console.log('Sample job structure:', Object.keys(data[0]));
+      console.log('Sample job data:', data[0]);
+    }
+    
+    const totalJobs = data.length;
+    
+    // Revenue analysis
+    const revenues = data.map(job => Number(job.Revenue) || 0);
+    const totalRevenue = revenues.reduce((sum, rev) => sum + rev, 0);
+    const avgRevenuePerJob = totalJobs > 0 ? totalRevenue / totalJobs : 0;
+    
+    // High-value jobs (≥$10k)
+    const highValueJobs = data.filter(job => (Number(job.Revenue) || 0) >= 10000);
+    const installCallsPercentage = totalJobs > 0 ? (highValueJobs.length / totalJobs) * 100 : 0;
+    
+    // Department analysis
+    const departmentGroups = data.reduce((acc, job) => {
+      const dept = job.Department || 'Unknown';
+      acc[dept] = (acc[dept] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    console.log('Department distribution:', departmentGroups);
+    
+    // Completion status analysis
+    const completedJobs = data.filter(job => 
+      (job.Completed || '').toLowerCase().includes('yes') ||
+      (job.Completed || '').toLowerCase().includes('complete')
+    ).length;
+    
+    // Service type analysis
+    const jettingJobs = data.filter(job => 
+      (job.Department || '').toLowerCase().includes('jetting') ||
+      (job.Department || '').toLowerCase().includes('jet')
+    ).length;
+    
+    const descalingJobs = data.filter(job => 
+      (job.Department || '').toLowerCase().includes('descaling') ||
+      (job.Department || '').toLowerCase().includes('descale')
+    ).length;
+    
+    // Zero revenue jobs
+    const zeroRevenueJobs = data.filter(job => (Number(job.Revenue) || 0) === 0).length;
+    
+    // Outstanding balance analysis
+    const jobsWithBalance = data.filter(job => {
+      const balance = job.Balance;
+      return balance && balance !== '0' && balance !== '$0' && balance !== '';
+    }).length;
+    
+    console.log('=== JOBS_REVENUE CALCULATION RESULTS ===');
+    console.log('Total jobs:', totalJobs);
+    console.log('Completed jobs:', completedJobs);
+    console.log('High-value jobs (≥$10k):', highValueJobs.length);
+    console.log('Average revenue per job:', avgRevenuePerJob);
+    console.log('Jobs with outstanding balance:', jobsWithBalance);
+    console.log('=== END JOBS_REVENUE DEBUGGING ===');
+    
+    return {
+      installCallsPercentage: installCallsPercentage,
+      installRevenuePerCall: avgRevenuePerJob,
+      jettingJobsPercentage: totalJobs > 0 ? (jettingJobs / totalJobs) * 100 : 0,
+      jettingRevenuePerCall: 0, // Would need line item detail
+      descalingJobsPercentage: totalJobs > 0 ? (descalingJobs / totalJobs) * 100 : 0,
+      descalingRevenuePerCall: 0, // Would need line item detail
+      membershipConversionRate: 0, // Not applicable for job revenue data
+      totalMembershipsRenewed: 0, // Not applicable for job revenue data
+      techPayPercentage: 0, // Would need cost data
+      laborRevenuePerHour: 0, // Would need time tracking data
+      jobEfficiency: totalJobs > 0 ? (completedJobs / totalJobs) * 100 : 0, // Completion rate as efficiency
+      zeroRevenueCallPercentage: totalJobs > 0 ? (zeroRevenueJobs / totalJobs) * 100 : 0,
+      diagnosticFeeOnlyPercentage: 0, // Would need line item detail
+      callbackPercentage: 0, // Not available in this data
+      clientComplaintPercentage: 0, // Not available in this data
+      clientReviewPercentage: 0 // Not available in this data
+    };
+  }
+
   async getTimeSeriesData(dateRange: DateRange): Promise<TimeSeriesData[]> {
     try {
       const dateColumn = this.tableName === 'Opportunities' ? '"Date"' : 'Invoice Date';
@@ -429,6 +573,8 @@ export class SupabaseService {
 
       if (this.tableName === 'Opportunities') {
         return this.calculateTimeSeriesFromOpportunities(data || [])
+      } else if (this.tableName === 'Jobs_revenue') {
+        return this.calculateTimeSeriesFromJobsRevenue(data || [])
       } else {
         return this.calculateTimeSeriesFromSoldLineitems(data || [])
       }
@@ -491,10 +637,46 @@ export class SupabaseService {
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
+  // Calculate time series data from Jobs_revenue
+  private calculateTimeSeriesFromJobsRevenue(rows: any[]): TimeSeriesData[] {
+    // Since Jobs_revenue doesn't have a date column, we'll create a simple trend
+    // based on job numbers (assuming higher job numbers are more recent)
+    const sortedJobs = rows.sort((a, b) => (a.Job || 0) - (b.Job || 0));
+    
+    // Group jobs into batches to create time series points
+    const batchSize = Math.max(1, Math.floor(sortedJobs.length / 10)); // 10 data points
+    const timeSeriesData: TimeSeriesData[] = [];
+    
+    for (let i = 0; i < sortedJobs.length; i += batchSize) {
+      const batch = sortedJobs.slice(i, i + batchSize);
+      const highValueJobs = batch.filter(job => (Number(job.Revenue) || 0) >= 10000).length;
+      const batchTotal = batch.length;
+      
+      // Use the middle job number as a pseudo-date
+      const middleJob = batch[Math.floor(batch.length / 2)];
+      const pseudoDate = `Job-${middleJob?.Job || i}`;
+      
+      timeSeriesData.push({
+        date: pseudoDate,
+        value: batchTotal > 0 ? (highValueJobs / batchTotal) * 100 : 0,
+        metric: 'high_value_jobs_percentage'
+      });
+    }
+    
+    return timeSeriesData;
+  }
+
   // Method to get raw data from your table for inspection
   async getRawData(limit: number = 100): Promise<any[]> {
     try {
-      const orderColumn = this.tableName === 'Opportunities' ? '"Date"' : 'Invoice Date';
+      let orderColumn: string;
+      if (this.tableName === 'Opportunities') {
+        orderColumn = '"Date"';
+      } else if (this.tableName === 'Jobs_revenue') {
+        orderColumn = '"Job"';
+      } else {
+        orderColumn = '"Invoice Date"';
+      }
       
       const { data, error } = await supabase
         .from(this.tableName)
@@ -560,6 +742,8 @@ export class SupabaseService {
       let selectColumns: string;
       if (this.tableName === 'Opportunities') {
         selectColumns = '"Date", "Job", "Customer", "Revenue", "Status"';
+      } else if (this.tableName === 'Jobs_revenue') {
+        selectColumns = '"Job", "Customer", "Revenue", "Department", "Completed"';
       } else {
         selectColumns = '"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"';
       }
@@ -653,8 +837,12 @@ export class SupabaseService {
         setTimeout(() => reject(new Error('Connection test timeout')), 5000);
       });
       
-      // Use appropriate primary key column based on table
-      const primaryKeyColumn = this.tableName === 'Opportunities' ? '"Job"' : '"Primary Key"';
+      let primaryKeyColumn: string;
+      if (this.tableName === 'Opportunities' || this.tableName === 'Jobs_revenue') {
+        primaryKeyColumn = '"Job"';
+      } else {
+        primaryKeyColumn = '"Primary Key"';
+      }
       
       const selectColumn = primaryKeyColumn;
       

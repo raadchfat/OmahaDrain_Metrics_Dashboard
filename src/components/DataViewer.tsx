@@ -23,6 +23,13 @@ export const DataViewer: React.FC = () => {
       description: 'Sales opportunities and pipeline data',
       primaryDateColumn: 'created_at',
       isActive: true
+    },
+    {
+      name: 'Jobs_revenue',
+      displayName: 'Jobs Revenue',
+      description: 'Completed job revenue and billing information',
+      primaryDateColumn: 'Job',
+      isActive: true
     }
   ]);
 
@@ -181,7 +188,7 @@ export const DataViewer: React.FC = () => {
               </ul>
             </div>
           </div>
-        ) : (
+        ) : selectedTable === 'Opportunities' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-blue-50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -225,6 +232,72 @@ export const DataViewer: React.FC = () => {
                 <li>• Tags (text)</li>
                 <li>• Membership Opportunity (text)</li>
                 <li>• Membership Sold (text)</li>
+              </ul>
+            </div>
+          </div>
+        ) : (
+          // Jobs_revenue table schema
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="w-4 h-4 text-blue-600" />
+                <span className="font-medium text-blue-900">Customer Info</span>
+              </div>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Customer (text)</li>
+                <li>• Email (text)</li>
+                <li>• Phone (text)</li>
+              </ul>
+            </div>
+            
+            <div className="bg-green-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="w-4 h-4 text-green-600" />
+                <span className="font-medium text-green-900">Billing Address</span>
+              </div>
+              <ul className="text-sm text-green-800 space-y-1">
+                <li>• Billing Street (text)</li>
+                <li>• Billing Apt/Suite (text)</li>
+                <li>• Billing City (text)</li>
+                <li>• Billing State (text)</li>
+                <li>• Billing Zip Code (number)</li>
+              </ul>
+            </div>
+            
+            <div className="bg-purple-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="w-4 h-4 text-purple-600" />
+                <span className="font-medium text-purple-900">Service Location</span>
+              </div>
+              <ul className="text-sm text-purple-800 space-y-1">
+                <li>• Location Name (text)</li>
+                <li>• Service Street (text)</li>
+                <li>• Service Zip Code (number)</li>
+              </ul>
+            </div>
+            
+            <div className="bg-orange-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="w-4 h-4 text-orange-600" />
+                <span className="font-medium text-orange-900">Financial Info</span>
+              </div>
+              <ul className="text-sm text-orange-800 space-y-1">
+                <li>• Revenue (number) - Main field</li>
+                <li>• Balance (text)</li>
+                <li>• Invoice (number)</li>
+              </ul>
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-gray-600" />
+                <span className="font-medium text-gray-900">Job Details</span>
+              </div>
+              <ul className="text-sm text-gray-800 space-y-1">
+                <li>• Job (number) - Primary Key</li>
+                <li>• Department (text)</li>
+                <li>• Owner (text)</li>
+                <li>• Completed (text)</li>
               </ul>
             </div>
           </div>
@@ -274,7 +347,7 @@ export const DataViewer: React.FC = () => {
                 </div>
               </div>
             </div>
-          ) : (
+          ) : selectedTable === 'Opportunities' ? (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-blue-50 rounded-lg p-3">
                 <div className="text-sm font-medium text-blue-900">Opportunity Stages</div>
@@ -306,6 +379,40 @@ export const DataViewer: React.FC = () => {
                 </div>
               </div>
             </div>
+          ) : (
+            // Jobs_revenue summary
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-3">
+                <div className="text-sm font-medium text-blue-900">Department Values</div>
+                <div className="text-xs text-blue-700 mt-1">
+                  {[...new Set(sampleData.map(row => row.Department).filter(Boolean))].slice(0, 3).join(', ')}
+                  {[...new Set(sampleData.map(row => row.Department).filter(Boolean))].length > 3 && '...'}
+                </div>
+              </div>
+              
+              <div className="bg-green-50 rounded-lg p-3">
+                <div className="text-sm font-medium text-green-900">Revenue Range</div>
+                <div className="text-xs text-green-700 mt-1">
+                  ${Math.min(...sampleData.map(row => Number(row.Revenue) || 0)).toLocaleString()} - 
+                  ${Math.max(...sampleData.map(row => Number(row.Revenue) || 0)).toLocaleString()}
+                </div>
+              </div>
+              
+              <div className="bg-purple-50 rounded-lg p-3">
+                <div className="text-sm font-medium text-purple-900">Job Range</div>
+                <div className="text-xs text-purple-700 mt-1">
+                  Job #{Math.min(...sampleData.map(row => Number(row.Job) || 0))} - 
+                  #{Math.max(...sampleData.map(row => Number(row.Job) || 0))}
+                </div>
+              </div>
+              
+              <div className="bg-orange-50 rounded-lg p-3">
+                <div className="text-sm font-medium text-orange-900">≥$10k Jobs</div>
+                <div className="text-xs text-orange-700 mt-1">
+                  {sampleData.filter(row => (Number(row.Revenue) || 0) >= 10000).length} found
+                </div>
+              </div>
+            </div>
           )}
           
           {/* Data Table */}
@@ -331,6 +438,16 @@ export const DataViewer: React.FC = () => {
                       <th className="px-3 py-2 text-left font-medium text-gray-500">Department</th>
                       <th className="px-3 py-2 text-left font-medium text-gray-500">Owner</th>
                     </>
+                  ) : (
+                    // Jobs_revenue columns
+                    <>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Job</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Customer</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Revenue</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Department</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Owner</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Completed</th>
+                    </>
                   )}
                 </tr>
               </thead>
@@ -339,7 +456,9 @@ export const DataViewer: React.FC = () => {
                   <tr key={index} className={`hover:bg-gray-50 ${
                     selectedTable === 'SoldLineitems' 
                       ? (Number(row.Price) || 0) >= 10000 ? 'bg-green-50' : ''
-                      : (Number(row.Revenue) || 0) >= 10000 ? 'bg-green-50' : ''
+                      : selectedTable === 'Opportunities'
+                        ? (Number(row.Revenue) || 0) >= 10000 ? 'bg-green-50' : ''
+                        : (Number(row.Revenue) || 0) >= 10000 ? 'bg-green-50' : '' // Jobs_revenue
                   }`}>
                     {selectedTable === 'SoldLineitems' ? (
                       <>
@@ -352,7 +471,7 @@ export const DataViewer: React.FC = () => {
                         <td className="px-3 py-2 text-gray-600 max-w-xs truncate">{row.Customer}</td>
                         <td className="px-3 py-2 text-gray-600">{row.Job}</td>
                       </>
-                    ) : (
+                    ) : selectedTable === 'Opportunities' ? (
                       <>
                         <td className="px-3 py-2 text-gray-900">{row.Date}</td>
                         <td className="px-3 py-2 text-gray-600 max-w-xs truncate">{row.Customer}</td>
@@ -362,6 +481,18 @@ export const DataViewer: React.FC = () => {
                         <td className="px-3 py-2 text-gray-600">{row.Status}</td>
                         <td className="px-3 py-2 text-gray-600">{row.Department}</td>
                         <td className="px-3 py-2 text-gray-600">{row['Opportunity Owner']}</td>
+                      </>
+                    ) : (
+                      // Jobs_revenue columns
+                      <>
+                        <td className="px-3 py-2 text-gray-900">#{row.Job}</td>
+                        <td className="px-3 py-2 text-gray-600 max-w-xs truncate">{row.Customer}</td>
+                        <td className={`px-3 py-2 font-medium ${(Number(row.Revenue) || 0) >= 10000 ? 'text-green-600' : 'text-gray-900'}`}>
+                          ${(Number(row.Revenue) || 0).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 text-gray-600">{row.Department}</td>
+                        <td className="px-3 py-2 text-gray-600">{row.Owner}</td>
+                        <td className="px-3 py-2 text-gray-600">{row.Completed}</td>
                       </>
                     )}
                   </tr>
@@ -376,10 +507,16 @@ export const DataViewer: React.FC = () => {
                 <p>• Green highlighted rows have Price ≥ $10,000 (Install Calls)</p>
                 <p>• Look for "Drain Cleaning" in Department column for denominator</p>
               </>
-            ) : (
+            ) : selectedTable === 'Opportunities' ? (
               <>
                 <p>• Green highlighted rows have Revenue ≥ $10,000 (High-Value Opportunities)</p>
                 <p>• Status shows the opportunity progression (Open, Closed, etc.)</p>
+              </>
+            ) : (
+              <>
+                <p>• Green highlighted rows have Revenue ≥ $10,000 (High-Value Jobs)</p>
+                <p>• Completed column shows job completion status</p>
+                <p>• Note: This table doesn't have date filtering - shows all jobs</p>
               </>
             )}
           </div>
