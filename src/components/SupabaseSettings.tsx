@@ -25,7 +25,7 @@ export const SupabaseSettings: React.FC = () => {
       description: 'Completed job revenue and billing information',
       primaryDateColumn: 'Job',
       isActive: false
-    }
+    },
     {
       name: 'Jobs_revenue',
       displayName: 'Jobs Revenue',
