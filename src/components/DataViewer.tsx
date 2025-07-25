@@ -438,7 +438,7 @@ export const DataViewer: React.FC = () => {
                       <th className="px-3 py-2 text-left font-medium text-gray-500">Department</th>
                       <th className="px-3 py-2 text-left font-medium text-gray-500">Owner</th>
                     </>
-                  ) : (
+                  ) : selectedTable === 'Jobs_revenue' ? (
                     // Jobs_revenue columns
                     <>
                       <th className="px-3 py-2 text-left font-medium text-gray-500">Job</th>
@@ -448,6 +448,7 @@ export const DataViewer: React.FC = () => {
                       <th className="px-3 py-2 text-left font-medium text-gray-500">Owner</th>
                       <th className="px-3 py-2 text-left font-medium text-gray-500">Completed</th>
                     </>
+                  ) : null
                   )}
                 </tr>
               </thead>
@@ -482,7 +483,7 @@ export const DataViewer: React.FC = () => {
                         <td className="px-3 py-2 text-gray-600">{row.Department}</td>
                         <td className="px-3 py-2 text-gray-600">{row['Opportunity Owner']}</td>
                       </>
-                    ) : (
+                    ) : selectedTable === 'Jobs_revenue' ? (
                       // Jobs_revenue columns
                       <>
                         <td className="px-3 py-2 text-gray-900">#{row.Job}</td>
@@ -494,6 +495,7 @@ export const DataViewer: React.FC = () => {
                         <td className="px-3 py-2 text-gray-600">{row.Owner}</td>
                         <td className="px-3 py-2 text-gray-600">{row.Completed}</td>
                       </>
+                    ) : null
                     )}
                   </tr>
                 ))}
