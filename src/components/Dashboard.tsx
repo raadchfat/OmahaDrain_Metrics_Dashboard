@@ -123,7 +123,7 @@ export const Dashboard: React.FC = () => {
     try {
       // Try Supabase first
       try {
-        const tableName = localStorage.getItem('supabaseTableName') || 'SoldLineitems';
+        const tableName = localStorage.getItem('supabaseActiveTable') || localStorage.getItem('supabaseTableName') || 'SoldLineitems';
         const supabaseService = new SupabaseService(tableName);
         const dateRange = getDateRangeFromTimeFrame(timeFrame);
         
@@ -149,12 +149,12 @@ export const Dashboard: React.FC = () => {
         });
         
         setDebugInfo({
-          dataSource: `Supabase Database`,
+          dataSource: `Supabase Database (${tableName})`,
           timeFrame: timeFrame,
           dateRange: `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}`,
           dataLoadedAt: new Date().toISOString(),
           tableName: tableName,
-          totalRecords: 'Calculated from SoldLineitems',
+          totalRecords: `Calculated from ${tableName}`,
           sampleKpiValues: {
             installCallsPercentage: kpis.installCallsPercentage,
             installRevenuePerCall: kpis.installRevenuePerCall,
@@ -166,7 +166,7 @@ export const Dashboard: React.FC = () => {
         setTrendData(trends);
         setIsLoading(false);
         setConnectionStatus('success');
-        setConnectionMessage(`Successfully calculated KPIs from your SoldLineitems table for ${timeFrame}! Found real transaction data.`);
+        setConnectionMessage(`Successfully calculated KPIs from your ${tableName} table for ${timeFrame}! Found real data.`);
         setDataSource('supabase');
         console.log('Supabase data loading completed successfully');
         return;

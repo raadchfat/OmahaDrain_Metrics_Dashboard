@@ -49,6 +49,32 @@ export type Database = {
           [key: string]: any
         }
       }
+      Opportunities: {
+        Row: {
+          id: string
+          created_at: string
+          updated_at: string | null
+          customer_name: string | null
+          customer_email: string | null
+          customer_phone: string | null
+          opportunity_value: number | null
+          opportunity_stage: string | null
+          opportunity_source: string | null
+          assigned_technician: string | null
+          scheduled_date: string | null
+          completion_date: string | null
+          opportunity_type: string | null
+          notes: string | null
+          status: string | null
+          [key: string]: any
+        }
+        Insert: {
+          [key: string]: any
+        }
+        Update: {
+          [key: string]: any
+        }
+      }
     }
   }
 }

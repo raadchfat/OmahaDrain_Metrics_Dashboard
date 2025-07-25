@@ -31,6 +31,19 @@ export class SupabaseService {
         setTimeout(() => reject(new Error('Request timeout')), 10000);
       });
 
+      // Route to appropriate KPI calculation based on table
+      if (this.tableName === 'Opportunities') {
+        return this.getOpportunitiesKPIData(dateRange, timeoutPromise);
+      } else {
+        return this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
+      }
+    } catch (error) {
+      console.error('Error in getKPIData:', error);
+      throw error;
+    }
+  }
+
+  private async getSoldLineitemsKPIData(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
       // Step 1: Fetch ALL data first to understand the date range
       console.log('🔍 Step 1: Fetching sample data to understand date format...');
       const samplePromise = supabase
@@ -108,10 +121,65 @@ export class SupabaseService {
       // Step 4: Calculate KPIs from filtered data
       console.log('✅ Calculating KPIs from filtered data...');
       return this.calculateKPIsFromSoldLineitems(filteredData);
-    } catch (error) {
-      console.error('Error in getKPIData:', error);
-      throw error;
+  }
+
+  private async getOpportunitiesKPIData(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
+    console.log('🔍 Fetching Opportunities data...');
+    
+    // Step 1: Fetch sample data to understand structure
+    const samplePromise = supabase
+      .from(this.tableName)
+      .select('created_at, opportunity_stage, opportunity_value, opportunity_type, status')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const { data: sampleData, error: sampleError } = await Promise.race([
+      samplePromise,
+      timeoutPromise
+    ]) as any;
+
+    if (sampleError) {
+      console.error('❌ Error fetching Opportunities sample data:', sampleError);
+      throw new Error(`Failed to fetch Opportunities data: ${sampleError.message}`);
     }
+
+    if (!sampleData || sampleData.length === 0) {
+      console.warn('⚠️ No Opportunities data found');
+      return this.getDefaultKPIData();
+    }
+
+    console.log('✅ Opportunities sample data retrieved:', {
+      totalRows: sampleData.length,
+      sampleData: sampleData.slice(0, 3)
+    });
+
+    // Step 2: Fetch filtered data
+    const filteredPromise = supabase
+      .from(this.tableName)
+      .select('*')
+      .gte('created_at', dateRange.start.toISOString())
+      .lte('created_at', dateRange.end.toISOString())
+      .order('created_at', { ascending: false });
+
+    const { data: filteredData, error: filteredError } = await Promise.race([
+      filteredPromise,
+      timeoutPromise
+    ]) as any;
+
+    if (filteredError) {
+      console.error('❌ Opportunities date filtering error:', filteredError);
+      throw new Error(`Opportunities date filtering failed: ${filteredError.message}`);
+    }
+
+    console.log('✅ Opportunities date filtering result:', {
+      rowsFound: filteredData?.length || 0
+    });
+
+    if (!filteredData || filteredData.length === 0) {
+      return this.getDefaultKPIData();
+    }
+
+    return this.calculateKPIsFromOpportunities(filteredData);
   }
 
   // Calculate KPIs from SoldLineitems data
@@ -246,22 +314,125 @@ export class SupabaseService {
       clientReviewPercentage: 0 // Would need review tracking data
     }
   }
+
+  // Calculate KPIs from Opportunities data
+  private calculateKPIsFromOpportunities(data: any[]): KPIData {
+    console.log('=== CALCULATING OPPORTUNITIES KPIs ===');
+    console.log('Total opportunities received:', data.length);
+    
+    if (data.length > 0) {
+      console.log('Sample opportunity structure:', Object.keys(data[0]));
+      console.log('Sample opportunity data:', data[0]);
+    }
+    
+    const totalOpportunities = data.length;
+    
+    // Opportunity stages analysis
+    const stageGroups = data.reduce((acc, opp) => {
+      const stage = opp.opportunity_stage || 'Unknown';
+      acc[stage] = (acc[stage] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    console.log('Opportunity stages:', stageGroups);
+    
+    // Calculate conversion rates based on stages
+    const closedWon = data.filter(opp => 
+      (opp.opportunity_stage || '').toLowerCase().includes('won') ||
+      (opp.opportunity_stage || '').toLowerCase().includes('closed won') ||
+      (opp.status || '').toLowerCase().includes('completed')
+    ).length;
+    
+    const closedLost = data.filter(opp => 
+      (opp.opportunity_stage || '').toLowerCase().includes('lost') ||
+      (opp.opportunity_stage || '').toLowerCase().includes('closed lost') ||
+      (opp.status || '').toLowerCase().includes('cancelled')
+    ).length;
+    
+    // High-value opportunities (≥$10k)
+    const highValueOpps = data.filter(opp => (Number(opp.opportunity_value) || 0) >= 10000);
+    const installCallsPercentage = totalOpportunities > 0 ? (highValueOpps.length / totalOpportunities) * 100 : 0;
+    
+    // Average opportunity value
+    const totalValue = data.reduce((sum, opp) => sum + (Number(opp.opportunity_value) || 0), 0);
+    const avgOpportunityValue = totalOpportunities > 0 ? totalValue / totalOpportunities : 0;
+    
+    // Opportunities by type
+    const typeGroups = data.reduce((acc, opp) => {
+      const type = opp.opportunity_type || 'Unknown';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    console.log('Opportunity types:', typeGroups);
+    
+    // Calculate specific service percentages
+    const jettingOpps = data.filter(opp => 
+      (opp.opportunity_type || '').toLowerCase().includes('jetting') ||
+      (opp.notes || '').toLowerCase().includes('jetting')
+    ).length;
+    
+    const descalingOpps = data.filter(opp => 
+      (opp.opportunity_type || '').toLowerCase().includes('descaling') ||
+      (opp.notes || '').toLowerCase().includes('descaling')
+    ).length;
+    
+    const membershipOpps = data.filter(opp => 
+      (opp.opportunity_type || '').toLowerCase().includes('membership') ||
+      (opp.notes || '').toLowerCase().includes('membership')
+    ).length;
+    
+    console.log('=== OPPORTUNITIES CALCULATION RESULTS ===');
+    console.log('Total opportunities:', totalOpportunities);
+    console.log('Closed won:', closedWon);
+    console.log('High-value opportunities (≥$10k):', highValueOpps.length);
+    console.log('Average opportunity value:', avgOpportunityValue);
+    console.log('=== END OPPORTUNITIES DEBUGGING ===');
+    
+    return {
+      installCallsPercentage: installCallsPercentage,
+      installRevenuePerCall: avgOpportunityValue,
+      jettingJobsPercentage: totalOpportunities > 0 ? (jettingOpps / totalOpportunities) * 100 : 0,
+      jettingRevenuePerCall: 0, // Would need revenue data per opportunity type
+      descalingJobsPercentage: totalOpportunities > 0 ? (descalingOpps / totalOpportunities) * 100 : 0,
+      descalingRevenuePerCall: 0, // Would need revenue data per opportunity type
+      membershipConversionRate: totalOpportunities > 0 ? (membershipOpps / totalOpportunities) * 100 : 0,
+      totalMembershipsRenewed: membershipOpps,
+      techPayPercentage: 0, // Not applicable for opportunities
+      laborRevenuePerHour: 0, // Not applicable for opportunities
+      jobEfficiency: totalOpportunities > 0 ? (closedWon / totalOpportunities) * 100 : 0, // Win rate as efficiency
+      zeroRevenueCallPercentage: totalOpportunities > 0 ? (closedLost / totalOpportunities) * 100 : 0, // Loss rate
+      diagnosticFeeOnlyPercentage: 0, // Not applicable for opportunities
+      callbackPercentage: 0, // Would need follow-up data
+      clientComplaintPercentage: 0, // Would need complaint tracking
+      clientReviewPercentage: 0 // Would need review tracking
+    };
+  }
   
   async getTimeSeriesData(dateRange: DateRange): Promise<TimeSeriesData[]> {
     try {
+      const dateColumn = this.tableName === 'Opportunities' ? 'created_at' : 'Invoice Date';
+      const selectColumns = this.tableName === 'Opportunities' 
+        ? 'created_at, opportunity_value, opportunity_stage, status'
+        : '*';
+      
       const { data, error } = await supabase
         .from(this.tableName)
-        .select('*')
-        .gte('Invoice Date', dateRange.start.toISOString().split('T')[0])
-        .lte('Invoice Date', dateRange.end.toISOString().split('T')[0])
-        .order('Invoice Date', { ascending: true })
+        .select(selectColumns)
+        .gte(dateColumn, this.tableName === 'Opportunities' ? dateRange.start.toISOString() : dateRange.start.toISOString().split('T')[0])
+        .lte(dateColumn, this.tableName === 'Opportunities' ? dateRange.end.toISOString() : dateRange.end.toISOString().split('T')[0])
+        .order(dateColumn, { ascending: true })
 
       if (error) {
         console.error('Error fetching time series data:', error)
         throw error
       }
 
-      return this.calculateTimeSeriesFromSoldLineitems(data || [])
+      if (this.tableName === 'Opportunities') {
+        return this.calculateTimeSeriesFromOpportunities(data || [])
+      } else {
+        return this.calculateTimeSeriesFromSoldLineitems(data || [])
+      }
     } catch (error) {
       console.error('Error in getTimeSeriesData:', error)
       return []
@@ -295,13 +466,41 @@ export class SupabaseService {
     }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
+  // Calculate time series data from Opportunities
+  private calculateTimeSeriesFromOpportunities(rows: any[]): TimeSeriesData[] {
+    // Group data by date and calculate daily metrics
+    const dailyData = new Map<string, any[]>();
+    
+    rows.forEach(row => {
+      const date = row.created_at.split('T')[0]; // Extract date part
+      if (!dailyData.has(date)) {
+        dailyData.set(date, []);
+      }
+      dailyData.get(date)!.push(row);
+    });
+    
+    // Calculate daily high-value opportunity percentages
+    return Array.from(dailyData.entries()).map(([date, dayData]) => {
+      const totalOpps = dayData.length;
+      const highValueOpps = dayData.filter(row => (Number(row.opportunity_value) || 0) >= 10000).length;
+      
+      return {
+        date,
+        value: totalOpps > 0 ? (highValueOpps / totalOpps) * 100 : 0,
+        metric: 'high_value_opportunities_percentage'
+      };
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
+
   // Method to get raw data from your table for inspection
   async getRawData(limit: number = 100): Promise<any[]> {
     try {
+      const orderColumn = this.tableName === 'Opportunities' ? 'created_at' : 'Invoice Date';
+      
       const { data, error } = await supabase
         .from(this.tableName)
         .select('*')
-        .order('Invoice Date', { ascending: false })
+        .order(orderColumn, { ascending: false })
         .limit(limit)
 
       if (error) {

@@ -68,3 +68,13 @@ export interface DateRange {
 }
 
 export type TimeFrame = 'today' | 'yesterday' | 'week' | 'lastweek' | 'month' | 'quarter' | 'year' | 'custom';
+
+export type TableName = 'SoldLineitems' | 'Opportunities';
+
+export interface TableConfig {
+  name: TableName;
+  displayName: string;
+  description: string;
+  primaryDateColumn: string;
+  isActive: boolean;
+}
