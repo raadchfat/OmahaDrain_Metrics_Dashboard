@@ -23,6 +23,13 @@ export const SupabaseSettings: React.FC = () => {
       name: 'Jobs_revenue',
       displayName: 'Jobs Revenue',
       description: 'Completed job revenue and billing information',
+      primaryDateColumn: 'Job',
+      isActive: false
+    }
+    {
+      name: 'Jobs_revenue',
+      displayName: 'Jobs Revenue',
+      description: 'Completed job revenue and billing information',
       primaryDateColumn: 'Job', // No date column, using Job as identifier
       isActive: false
     }
