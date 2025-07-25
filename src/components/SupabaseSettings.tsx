@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Database, TestTube, CheckCircle, XCircle, AlertCircle, Save, ToggleLeft, ToggleRight } from 'lucide-react';
 import { SupabaseService } from '../services/supabaseService';
+import { SettingsTable } from './SettingsTable';
 import { TableConfig, TableName } from '../types';
 
 export const SupabaseSettings: React.FC = () => {
@@ -179,89 +180,20 @@ export const SupabaseSettings: React.FC = () => {
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Available Tables</h3>
           
-          {tableConfigs.map((config) => (
-            <div key={config.name} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => toggleTableActive(config.name)}
-                    className={`p-1 rounded ${config.isActive ? 'text-green-600' : 'text-gray-400'}`}
-                    title={config.isActive ? 'Table is active - click to disable' : 'Table is inactive - click to enable'}
-                  >
-                    {config.isActive ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6" />}
-                  </button>
-                  <div>
-                    <h4 className="font-medium text-gray-900">{config.displayName}</h4>
-                    <p className="text-sm text-gray-600">{config.description}</p>
-                    <p className="text-xs text-gray-500 font-mono">Table: {config.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        config.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {config.isActive ? '● Active' : '○ Inactive'}
-                      </span>
-                      {config.name === 'Jobs_revenue' && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          No Date Filter
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setActiveTableAndSave(config.name)}
-                    className={`px-3 py-1 text-xs font-medium rounded-lg ${
-                      activeTable === config.name
-                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {activeTable === config.name ? 'Primary' : 'Set Primary'}
-                  </button>
-                  
-                  <button
-                    onClick={() => testSupabaseConnection(config.name)}
-                    disabled={isTestingConnection}
-                    className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
-                  >
-                    <TestTube className={`w-3 h-3 ${isTestingConnection ? 'animate-pulse' : ''}`} />
-                    Test
-                  </button>
-                </div>
-              </div>
-              
-              {connectionResults[config.name] && (
-                <div className={`p-3 rounded-lg border flex items-start gap-3 text-sm ${
-                  connectionResults[config.name].status === 'success' ? 'bg-green-50 border-green-200' : 
-                  connectionResults[config.name].status === 'error' ? 'bg-red-50 border-red-200' :
-                  'bg-blue-50 border-blue-200'
-                }`}>
-                  {connectionResults[config.name].status === 'success' && <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />}
-                  {connectionResults[config.name].status === 'error' && <XCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />}
-                  {connectionResults[config.name].status === 'idle' && <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />}
-                  <div>
-                    <h5 className={`font-medium ${
-                      connectionResults[config.name].status === 'success' ? 'text-green-800' : 
-                      connectionResults[config.name].status === 'error' ? 'text-red-800' :
-                      'text-blue-800'
-                    }`}>
-                      {connectionResults[config.name].status === 'success' ? 'Connection Successful' : 
-                       connectionResults[config.name].status === 'error' ? 'Connection Failed' :
-                       'Testing Connection'}
-                    </h5>
-                    <p className={`mt-1 ${
-                      connectionResults[config.name].status === 'success' ? 'text-green-700' : 
-                      connectionResults[config.name].status === 'error' ? 'text-red-700' :
-                      'text-blue-700'
-                    }`}>
-                      {connectionResults[config.name].message}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+          {tableConfigs.map(table => (
+            <SettingsTable
+              key={table.name}
+              table={table.name}
+              displayName={table.displayName}
+              description={table.description}
+              isActive={table.isActive}
+              isPrimary={activeTable === table.name}
+              onToggleActive={toggleTableActive}
+              onSetPrimary={setActiveTableAndSave}
+              connectionResult={connectionResults[table.name]}
+              onTest={testSupabaseConnection}
+              isTestingConnection={isTestingConnection}
+            />
           ))}
         </div>
         
