@@ -58,9 +58,22 @@ export class SupabaseService {
       // Always calculate client reviews from Reviews and Opportunities tables
       const clientReviewPercentage = await this.calculateClientReviewsKPI(dateRange, timeoutPromise);
       
+      // Store specific debug data for client reviews
+      const clientReviewsDebugData = {
+        dataSource: 'Reviews + Opportunities Tables',
+        dateRange: dateRange,
+        tablesUsed: ['Reviews', 'Opportunities'],
+        calculatedAt: new Date().toISOString(),
+        formula: '(Reviews in date range) ÷ (Won Opportunities in date range) × 100'
+      };
+      
       return {
         ...baseKPIs,
-        clientReviewPercentage
+        clientReviewPercentage,
+        debugData: {
+          ...baseKPIs.debugData,
+          clientReviewPercentage: clientReviewsDebugData
+        }
       };
     } catch (error) {
       console.error('Error in getKPIData:', error);
@@ -530,7 +543,7 @@ export class SupabaseService {
     const closedWon = data.filter(opp => 
       (opp.Status || '').toLowerCase().includes('won') ||
       (opp.Status || '').toLowerCase().includes('closed won') ||
-      (opp.Status || '').toLowerCase().includes('completed')
+      (opp.Status || '').toLowerCase().includes('completed') ||
       (opp.Status || '').toLowerCase().includes('sold')
     ).length;
     
