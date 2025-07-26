@@ -151,8 +151,14 @@ export class SupabaseService {
     // Now calculate client reviews percentage
     try {
       console.log('🔍 Calculating Client Reviews KPI...');
+      console.log('Date range for reviews calculation:', {
+        start: dateRange.start.toISOString().split('T')[0],
+        end: dateRange.end.toISOString().split('T')[0],
+        timeFrame: 'Current Month'
+      });
       
       // Get won opportunities in the date range
+      console.log('🔍 Fetching won opportunities from Opportunities table...');
       const opportunitiesPromise = supabase
         .from('Opportunities')
         .select('"Job", "Status", "Date", "Primary Key"')
@@ -167,10 +173,18 @@ export class SupabaseService {
 
       if (oppError) {
         console.warn('Could not fetch opportunities for reviews calculation:', oppError);
+        console.error('Opportunities query error details:', oppError);
         return baseKPIs; // Return base KPIs without reviews calculation
       }
 
+      console.log('✅ Won opportunities query result:', {
+        totalFound: wonOpportunities?.length || 0,
+        sampleData: wonOpportunities?.slice(0, 3),
+        dateFilter: `${dateRange.start.toISOString().split('T')[0]} to ${dateRange.end.toISOString().split('T')[0]}`
+      });
+
       // Get reviews in the date range
+      console.log('🔍 Fetching reviews from Reviews table...');
       const reviewsPromise = supabase
         .from('Reviews')
         .select('"ID", "Rating", "Review Date", "Customer Name", "Source", "Status"')
@@ -184,8 +198,15 @@ export class SupabaseService {
 
       if (reviewsError) {
         console.warn('Could not fetch reviews for reviews calculation:', reviewsError);
+        console.error('Reviews query error details:', reviewsError);
         return baseKPIs; // Return base KPIs without reviews calculation
       }
+
+      console.log('✅ Reviews query result:', {
+        totalFound: reviews?.length || 0,
+        sampleData: reviews?.slice(0, 3),
+        dateFilter: `${dateRange.start.toISOString().split('T')[0]} to ${dateRange.end.toISOString().split('T')[0]}`
+      });
 
       const wonOpportunitiesCount = wonOpportunities?.length || 0;
       const reviewsCount = reviews?.length || 0;
@@ -201,6 +222,24 @@ export class SupabaseService {
         dateRange: `${dateRange.start.toISOString().split('T')[0]} to ${dateRange.end.toISOString().split('T')[0]}`
       });
 
+      // Additional debugging: Let's also check what statuses we're finding
+      if (wonOpportunities && wonOpportunities.length > 0) {
+        const statusCounts = wonOpportunities.reduce((acc: any, opp: any) => {
+          const status = opp.Status || 'null';
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {});
+        console.log('📊 Won opportunities by status:', statusCounts);
+      }
+
+      // Check review dates format
+      if (reviews && reviews.length > 0) {
+        console.log('📅 Sample review dates:', reviews.slice(0, 5).map((r: any) => ({
+          id: r.ID,
+          reviewDate: r['Review Date'],
+          customer: r['Customer Name']
+        })));
+      }
       return {
         ...baseKPIs,
         clientReviewPercentage
@@ -208,6 +247,7 @@ export class SupabaseService {
 
     } catch (error) {
       console.warn('Error calculating client reviews, using base KPIs:', error);
+      console.error('Full error details:', error);
       return baseKPIs;
     }
   }
