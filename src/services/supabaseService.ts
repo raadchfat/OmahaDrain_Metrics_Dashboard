@@ -158,7 +158,7 @@ export class SupabaseService {
         .select('"Job", "Status", "Date", "Primary Key"')
         .gte('"Date"', dateRange.start.toISOString().split('T')[0])
         .lte('"Date"', dateRange.end.toISOString().split('T')[0])
-        .or('"Status".ilike.%won%,"Status".ilike.%closed%,"Status".ilike.%completed%');
+        .or('"Status".ilike.%won%,"Status".ilike.%closed won%,"Status".ilike.%completed%,"Status".ilike.%sold%');
 
       const { data: wonOpportunities, error: oppError } = await Promise.race([
         opportunitiesPromise,
@@ -197,7 +197,8 @@ export class SupabaseService {
       console.log('✅ Client Reviews calculation:', {
         wonOpportunities: wonOpportunitiesCount,
         reviews: reviewsCount,
-        percentage: clientReviewPercentage.toFixed(2) + '%'
+        percentage: clientReviewPercentage.toFixed(2) + '%',
+        dateRange: `${dateRange.start.toISOString().split('T')[0]} to ${dateRange.end.toISOString().split('T')[0]}`
       });
 
       return {
@@ -489,8 +490,9 @@ export class SupabaseService {
     // Calculate conversion rates based on status
     const closedWon = data.filter(opp => 
       (opp.Status || '').toLowerCase().includes('won') ||
-      (opp.Status || '').toLowerCase().includes('closed') ||
+      (opp.Status || '').toLowerCase().includes('closed won') ||
       (opp.Status || '').toLowerCase().includes('completed')
+      (opp.Status || '').toLowerCase().includes('sold')
     ).length;
     
     const closedLost = data.filter(opp => 
@@ -554,7 +556,7 @@ export class SupabaseService {
       diagnosticFeeOnlyPercentage: 0, // Not applicable for opportunities
       callbackPercentage: 0, // Would need follow-up data
       clientComplaintPercentage: 0, // Would need complaint tracking
-      clientReviewPercentage: 0 // Would need review tracking
+      clientReviewPercentage: 0 // Calculated separately when using SoldLineitems as primary table
     };
   }
   

@@ -290,8 +290,8 @@ export const KPI_METRICS: KPIMetric[] = [
     id: 'clientReviewPercentage',
     name: 'Client Reviews',
     unit: '%',
-    description: 'Percentage of customers who left reviews',
-    formula: '(# of Customer Reviews) ÷ (Total # of Customers) × 100',
+    description: 'Percentage of won opportunities that resulted in customer reviews',
+    formula: '(# of Customer Reviews in date range) ÷ (# of Won Opportunities in date range) × 100',
     defaultRanges: [
       { min: 0, max: 10, score: 1 },
       { min: 10, max: 20, score: 2 },
