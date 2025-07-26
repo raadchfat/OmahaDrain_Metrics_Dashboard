@@ -191,40 +191,34 @@ export type Database = {
     }
     Reviews: {
       Row: {
-        "id": number
-        "created_at": string
-        "customer_id": number | null
-        "job_id": string | null
-        "opportunity_id": number | null
-        "review_date": string | null
-        "rating": number | null
-        "review_text": string | null
-        "platform": string | null
-        "customer_name": string | null
+        "ID": string
+        "Rating": number | null
+        "Review": string | null
+        "Review Date": string | null
+        "Customer Name": string | null
+        "Source": string | null
+        "Status": string | null
+        "Technician Name": string | null
       }
       Insert: {
-        "id"?: number
-        "created_at"?: string
-        "customer_id"?: number | null
-        "job_id"?: string | null
-        "opportunity_id"?: number | null
-        "review_date"?: string | null
-        "rating"?: number | null
-        "review_text"?: string | null
-        "platform"?: string | null
-        "customer_name"?: string | null
+        "ID": string
+        "Rating"?: number | null
+        "Review"?: string | null
+        "Review Date"?: string | null
+        "Customer Name"?: string | null
+        "Source"?: string | null
+        "Status"?: string | null
+        "Technician Name"?: string | null
       }
       Update: {
-        "id"?: number
-        "created_at"?: string
-        "customer_id"?: number | null
-        "job_id"?: string | null
-        "opportunity_id"?: number | null
-        "review_date"?: string | null
-        "rating"?: number | null
-        "review_text"?: string | null
-        "platform"?: string | null
-        "customer_name"?: string | null
+        "ID"?: string
+        "Rating"?: number | null
+        "Review"?: string | null
+        "Review Date"?: string | null
+        "Customer Name"?: string | null
+        "Source"?: string | null
+        "Status"?: string | null
+        "Technician Name"?: string | null
       }
     }
   }

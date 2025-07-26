@@ -173,9 +173,9 @@ export class SupabaseService {
       // Get reviews in the date range
       const reviewsPromise = supabase
         .from('Reviews')
-        .select('*')
-        .gte('review_date', dateRange.start.toISOString().split('T')[0])
-        .lte('review_date', dateRange.end.toISOString().split('T')[0]);
+        .select('"ID", "Rating", "Review Date", "Customer Name", "Source", "Status"')
+        .gte('"Review Date"', dateRange.start.toISOString().split('T')[0])
+        .lte('"Review Date"', dateRange.end.toISOString().split('T')[0]);
 
       const { data: reviews, error: reviewsError } = await Promise.race([
         reviewsPromise,
