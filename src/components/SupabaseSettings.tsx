@@ -24,15 +24,10 @@ export const SupabaseSettings: React.FC = () => {
       name: 'Jobs_revenue',
       displayName: 'Jobs Revenue',
       description: 'Completed job revenue and billing information (Historical Data)',
-      primaryDateColumn: 'Job',
+      primaryDateColumn: 'Completed',
       isActive: true
     }
   ]);
-  
-  // Debug logs for troubleshooting
-  console.log("Available tables: ", tableConfigs);
-  console.log("Jobs_revenue table config: ", tableConfigs.find(t => t.name === 'Jobs_revenue'));
-  console.log("Active tables: ", tableConfigs.filter(t => t.isActive));
   
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionResults, setConnectionResults] = useState<Record<string, { status: 'idle' | 'success' | 'error', message: string }>>({});
@@ -218,12 +213,6 @@ export const SupabaseSettings: React.FC = () => {
             />
           ))}
           
-          {/* Debug: Show if Jobs_revenue is missing */}
-          {!tableConfigs.find(t => t.name === 'Jobs_revenue') && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">⚠️ Jobs_revenue table not found in configuration!</p>
-            </div>
-          )}
         </div>
         
         <div className="flex items-center gap-4">
