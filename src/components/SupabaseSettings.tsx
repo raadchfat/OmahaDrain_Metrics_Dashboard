@@ -30,7 +30,7 @@ export const SupabaseSettings: React.FC = () => {
     {
       name: 'Reviews',
       displayName: 'Customer Reviews',
-      description: 'Customer review data with ratings and feedback',
+      description: 'Customer review data with ratings and feedback (ID, Rating, Review Date, Customer Name, Source, Status, Technician Name)',
       primaryDateColumn: 'Review Date',
       isActive: true
     }
