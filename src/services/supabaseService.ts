@@ -538,8 +538,8 @@ export class SupabaseService {
     
     // Outstanding balance analysis
     const jobsWithBalance = data.filter(job => {
-      const balance = job.Balance;
-      return balance && balance !== '0' && balance !== '$0' && balance !== '';
+      const balance = Number(job.Balance) || 0;
+      return balance > 0;
     }).length;
     
     console.log('=== JOBS_REVENUE CALCULATION RESULTS ===');
@@ -659,7 +659,7 @@ export class SupabaseService {
   private calculateTimeSeriesFromJobsRevenue(rows: any[]): TimeSeriesData[] {
     // Since Jobs_revenue doesn't have a date column, we'll create a simple trend
     // based on job numbers (assuming higher job numbers are more recent)
-    const sortedJobs = rows.sort((a, b) => (a.Job || 0) - (b.Job || 0));
+    const sortedJobs = rows.sort((a, b) => (parseInt(a.Job) || 0) - (parseInt(b.Job) || 0));
     
     // Group jobs into batches to create time series points
     const batchSize = Math.max(1, Math.floor(sortedJobs.length / 10)); // 10 data points
@@ -761,7 +761,7 @@ export class SupabaseService {
       if (this.tableName === 'Opportunities') {
         selectColumns = '"Date", "Job", "Customer", "Revenue", "Status"';
       } else if (this.tableName === 'Jobs_revenue') {
-        selectColumns = '"Job", "Customer", "Revenue", "Department", "Completed"';
+        selectColumns = '"Job", "Customer", "Revenue", "Department", "Completed", "Primary Key"';
       } else {
         selectColumns = '"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"';
       }

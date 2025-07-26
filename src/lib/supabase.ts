@@ -124,66 +124,69 @@ export type Database = {
         }
       }
     }
-    "Jobs_revenue": {
+    Jobs_revenue: {
       Row: {
         "Completed": string | null
-        "Invoice": number | null
+        "Invoice": string | null
         "Customer": string | null
         "Email": string | null
         "Phone": string | null
         "Billing Street": string | null
-        "Billing Apt/Suite": string | null
+        "Apt": string | null
         "Billing City": string | null
         "Billing State": string | null
-        "Billing Zip Code": number | null
-        "Job": number
+        "Billing Zip Code": string | null
+        "Job": string
+        "Tags": string | null
         "Location Name": string | null
         "Service Street": string | null
-        "Service Zip Code": number | null
         "Department": string | null
         "Owner": string | null
         "Revenue": number | null
-        "Balance": string | null
+        "Balance": number | null
+        "Primary Key": string
       }
       Insert: {
         "Completed"?: string | null
-        "Invoice"?: number | null
+        "Invoice"?: string | null
         "Customer"?: string | null
         "Email"?: string | null
         "Phone"?: string | null
         "Billing Street"?: string | null
-        "Billing Apt/Suite"?: string | null
+        "Apt"?: string | null
         "Billing City"?: string | null
         "Billing State"?: string | null
-        "Billing Zip Code"?: number | null
-        "Job": number
+        "Billing Zip Code"?: string | null
+        "Job": string
+        "Tags"?: string | null
         "Location Name"?: string | null
         "Service Street"?: string | null
-        "Service Zip Code"?: number | null
         "Department"?: string | null
         "Owner"?: string | null
         "Revenue"?: number | null
-        "Balance"?: string | null
+        "Balance"?: number | null
+        "Primary Key": string
       }
       Update: {
         "Completed"?: string | null
-        "Invoice"?: number | null
+        "Invoice"?: string | null
         "Customer"?: string | null
         "Email"?: string | null
         "Phone"?: string | null
         "Billing Street"?: string | null
-        "Billing Apt/Suite"?: string | null
+        "Apt"?: string | null
         "Billing City"?: string | null
         "Billing State"?: string | null
-        "Billing Zip Code"?: number | null
-        "Job"?: number
+        "Billing Zip Code"?: string | null
+        "Job"?: string
+        "Tags"?: string | null
         "Location Name"?: string | null
         "Service Street"?: string | null
-        "Service Zip Code"?: number | null
         "Department"?: string | null
         "Owner"?: string | null
         "Revenue"?: number | null
-        "Balance"?: string | null
+        "Balance"?: number | null
+        "Primary Key"?: string
       }
     }
   }

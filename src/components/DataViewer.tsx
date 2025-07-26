@@ -401,8 +401,8 @@ export const DataViewer: React.FC = () => {
               <div className="bg-purple-50 rounded-lg p-3">
                 <div className="text-sm font-medium text-purple-900">Job Range</div>
                 <div className="text-xs text-purple-700 mt-1">
-                  Job #{Math.min(...sampleData.map(row => Number(row.Job) || 0))} - 
-                  #{Math.max(...sampleData.map(row => Number(row.Job) || 0))}
+                  Job {Math.min(...sampleData.map(row => parseInt(row.Job) || 0))} - 
+                  {Math.max(...sampleData.map(row => parseInt(row.Job) || 0))}
                 </div>
               </div>
               
@@ -492,7 +492,7 @@ export const DataViewer: React.FC = () => {
                     ) : selectedTable === 'Jobs_revenue' ? (
                       // Jobs_revenue columns
                       <>
-                        <td className="px-3 py-2 text-gray-900">#{row.Job}</td>
+                        <td className="px-3 py-2 text-gray-900">{row.Job}</td>
                         <td className="px-3 py-2 text-gray-600 max-w-xs truncate">{row.Customer}</td>
                         <td className={`px-3 py-2 font-medium ${(Number(row.Revenue) || 0) >= 10000 ? 'text-green-600' : 'text-gray-900'}`}>
                           ${(Number(row.Revenue) || 0).toLocaleString()}
