@@ -5,7 +5,7 @@ import { SettingsTable } from './SettingsTable';
 import { TableConfig, TableName } from '../types';
 
 export const SupabaseSettings: React.FC = () => {
-  const [tableConfigs, setTableConfigs] = useState<TableConfig[]>([
+  const getDefaultTableConfigs = (): TableConfig[] => [
     {
       name: 'SoldLineitems',
       displayName: 'Sold Line Items',
@@ -27,7 +27,9 @@ export const SupabaseSettings: React.FC = () => {
       primaryDateColumn: 'Completed',
       isActive: true
     }
-  ]);
+  ];
+  
+  const [tableConfigs, setTableConfigs] = useState<TableConfig[]>(getDefaultTableConfigs());
   
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionResults, setConnectionResults] = useState<Record<string, { status: 'idle' | 'success' | 'error', message: string }>>({});
@@ -36,10 +38,31 @@ export const SupabaseSettings: React.FC = () => {
   const [activeTable, setActiveTable] = useState<TableName>('SoldLineitems');
 
   useEffect(() => {
-    // Load saved table configurations
+    // Load saved table configurations and merge with defaults
     const savedConfigs = localStorage.getItem('supabaseTableConfigs');
     if (savedConfigs) {
-      setTableConfigs(JSON.parse(savedConfigs));
+      try {
+        const parsed = JSON.parse(savedConfigs);
+        const defaultConfigs = getDefaultTableConfigs();
+        
+        // Merge saved configs with defaults to ensure all tables are present
+        const mergedConfigs = defaultConfigs.map(defaultConfig => {
+          const savedConfig = parsed.find((config: TableConfig) => config.name === defaultConfig.name);
+          return savedConfig ? { ...defaultConfig, ...savedConfig } : defaultConfig;
+        });
+        
+        setTableConfigs(mergedConfigs);
+        // Save the merged config back to localStorage
+        localStorage.setItem('supabaseTableConfigs', JSON.stringify(mergedConfigs));
+      } catch (error) {
+        console.error('Error parsing saved table configs:', error);
+        setTableConfigs(getDefaultTableConfigs());
+      }
+    } else {
+      // No saved config, use defaults and save them
+      const defaultConfigs = getDefaultTableConfigs();
+      setTableConfigs(defaultConfigs);
+      localStorage.setItem('supabaseTableConfigs', JSON.stringify(defaultConfigs));
     }
     
     const savedActiveTable = localStorage.getItem('supabaseActiveTable') as TableName;
