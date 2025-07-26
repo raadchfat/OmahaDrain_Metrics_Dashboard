@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TestTube, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { TestTube, CheckCircle, XCircle, AlertCircle, X } from 'lucide-react';
 import { KPICard } from './charts/KPICard';
 import { TrendChart } from './charts/TrendChart';
 import { TimeFrameFilter } from './filters/TimeFrameFilter';
@@ -20,6 +20,9 @@ export const Dashboard: React.FC = () => {
   const [connectionMessage, setConnectionMessage] = useState('');
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [dataSource, setDataSource] = useState<'supabase' | 'sheets'>('supabase');
+  const [showDebugModal, setShowDebugModal] = useState(false);
+  const [debugModalData, setDebugModalData] = useState<any>(null);
+  const [kpiDebugData, setKpiDebugData] = useState<Record<string, any>>({});
 
   useEffect(() => {
     loadData();
@@ -146,6 +149,14 @@ export const Dashboard: React.FC = () => {
           installCallsPercentage: kpis.installCallsPercentage,
           installRevenuePerCall: kpis.installRevenuePerCall,
           totalRows: 'from Supabase query'
+        });
+        
+        // Store debug data for KPIs
+        setKpiDebugData({
+          dataSource: `Supabase Database (${tableName})`,
+          dateRange: dateRange,
+          tableName: tableName,
+          calculatedAt: new Date().toISOString()
         });
         
         setDebugInfo({
@@ -314,6 +325,18 @@ export const Dashboard: React.FC = () => {
     }
     setIsLoading(false);
     console.log('Dashboard loadData completed');
+  };
+
+  const handleShowDebug = (metricId: string, title: string) => {
+    setDebugModalData({
+      metricId,
+      title,
+      debugData: kpiDebugData,
+      dateRange: getDateRangeFromTimeFrame(timeFrame),
+      dataSource,
+      timeFrame
+    });
+    setShowDebugModal(true);
   };
 
   if (isLoading || !kpiData) {
@@ -517,11 +540,98 @@ export const Dashboard: React.FC = () => {
             trend={card.trend}
             trendValue={card.trendValue}
             scoreRanges={scoreRanges}
+            debugData={kpiDebugData}
+            onShowDebug={() => handleShowDebug(card.metricId, card.title)}
           />
             );
           })()
         ))}
       </div>
+
+      {/* Debug Modal */}
+      {showDebugModal && debugModalData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Debug: {debugModalData.title}
+                </h2>
+                <button
+                  onClick={() => setShowDebugModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">Data Source</h3>
+                  <p className="text-blue-800 text-sm">
+                    {debugModalData.dataSource === 'supabase' ? 'Supabase Database' : 'Google Sheets'}
+                  </p>
+                  <p className="text-blue-700 text-xs mt-1">
+                    Primary Table: {debugModalData.debugData?.tableName || 'Unknown'}
+                  </p>
+                </div>
+                
+                <div className="bg-green-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-green-900 mb-2">Time Period</h3>
+                  <p className="text-green-800 text-sm">
+                    {debugModalData.timeFrame} ({debugModalData.dateRange?.start?.toLocaleDateString()} - {debugModalData.dateRange?.end?.toLocaleDateString()})
+                  </p>
+                </div>
+                
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-purple-900 mb-2">Calculation Details</h3>
+                  <div className="text-purple-800 text-sm space-y-2">
+                    {debugModalData.metricId === 'clientReviewPercentage' && (
+                      <div>
+                        <p><strong>Formula:</strong> (Reviews in date range) ÷ (Won Opportunities in date range) × 100</p>
+                        <p><strong>Tables Used:</strong> Reviews table + Opportunities table</p>
+                        <p><strong>Date Columns:</strong> Review Date + Date</p>
+                        <p><strong>Status Filter:</strong> Won, Closed Won, Completed, Sold</p>
+                      </div>
+                    )}
+                    {debugModalData.metricId === 'installCallsPercentage' && (
+                      <div>
+                        <p><strong>Formula:</strong> (Jobs with ≥$10k line items) ÷ (Total unique jobs) × 100</p>
+                        <p><strong>Tables Used:</strong> {debugModalData.debugData?.tableName || 'Primary table'}</p>
+                        <p><strong>Install Threshold:</strong> $10,000 or more</p>
+                      </div>
+                    )}
+                    {debugModalData.metricId === 'installRevenuePerCall' && (
+                      <div>
+                        <p><strong>Formula:</strong> (Total install revenue ≥$10k) ÷ (Total unique jobs)</p>
+                        <p><strong>Tables Used:</strong> {debugModalData.debugData?.tableName || 'Primary table'}</p>
+                        <p><strong>Install Threshold:</strong> $10,000 or more</p>
+                      </div>
+                    )}
+                    <p><strong>Calculated At:</strong> {new Date(debugModalData.debugData?.calculatedAt || Date.now()).toLocaleString()}</p>
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">Raw Debug Data</h3>
+                  <pre className="text-xs text-gray-700 bg-white p-3 rounded border overflow-x-auto">
+{JSON.stringify(debugModalData.debugData, null, 2)}
+                  </pre>
+                </div>
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowDebugModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TrendChart

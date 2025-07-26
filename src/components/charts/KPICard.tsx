@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, TrendingUp, TrendingDown } from 'lucide-react';
+import { Info, TrendingUp, TrendingDown, Bug } from 'lucide-react';
 import { ScoreRange } from '../../types';
 import { getScoreFromValue } from '../../utils/scoringUtils';
 
@@ -13,6 +13,8 @@ interface KPICardProps {
   trendValue?: number;
   color?: 'blue' | 'green' | 'orange' | 'red' | 'purple';
   scoreRanges?: ScoreRange[];
+  debugData?: any;
+  onShowDebug?: () => void;
 }
 
 const colorClasses = {
@@ -32,7 +34,9 @@ export const KPICard: React.FC<KPICardProps> = ({
   trend = 'neutral',
   trendValue,
   color = 'blue',
-  scoreRanges
+  scoreRanges,
+  debugData,
+  onShowDebug
 }) => {
   const score = getScoreFromValue(value, scoreRanges);
   
@@ -63,6 +67,15 @@ export const KPICard: React.FC<KPICardProps> = ({
                 {description}
               </div>
             </div>
+            {debugData && onShowDebug && (
+              <button
+                onClick={onShowDebug}
+                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                title="Show calculation data"
+              >
+                <Bug className="w-3 h-3" />
+              </button>
+            )}
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-gray-900">
