@@ -155,7 +155,7 @@ export class SupabaseService {
       // Get won opportunities in the date range
       const opportunitiesPromise = supabase
         .from('Opportunities')
-        .select('"Job", "Status", "Date"')
+        .select('"Job", "Status", "Date", "Primary Key"')
         .gte('"Date"', dateRange.start.toISOString().split('T')[0])
         .lte('"Date"', dateRange.end.toISOString().split('T')[0])
         .or('"Status".ilike.%won%,"Status".ilike.%closed%,"Status".ilike.%completed%');

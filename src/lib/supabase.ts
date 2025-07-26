@@ -73,6 +73,7 @@ export type Database = {
           "Membership Opportunity": string | null
           "Membership Sold": string | null
           "Revenue": number | null
+          "Primary Key": number
         }
         Insert: {
           "Date"?: string | null
@@ -97,6 +98,7 @@ export type Database = {
           "Membership Opportunity"?: string | null
           "Membership Sold"?: string | null
           "Revenue"?: number | null
+          "Primary Key": number
         }
         Update: {
           "Date"?: string | null
@@ -121,6 +123,7 @@ export type Database = {
           "Membership Opportunity"?: string | null
           "Membership Sold"?: string | null
           "Revenue"?: number | null
+          "Primary Key"?: number
         }
       }
     }
