@@ -26,6 +26,13 @@ export const SupabaseSettings: React.FC = () => {
       description: 'Completed job revenue and billing information (Historical Data)',
       primaryDateColumn: 'Completed',
       isActive: true
+    },
+    {
+      name: 'Reviews',
+      displayName: 'Customer Reviews',
+      description: 'Customer review data for calculating review percentages',
+      primaryDateColumn: 'review_date',
+      isActive: true
     }
   ];
   

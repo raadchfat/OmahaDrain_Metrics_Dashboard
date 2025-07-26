@@ -189,5 +189,43 @@ export type Database = {
         "Primary Key"?: string
       }
     }
+    Reviews: {
+      Row: {
+        "id": number
+        "created_at": string
+        "customer_id": number | null
+        "job_id": string | null
+        "opportunity_id": number | null
+        "review_date": string | null
+        "rating": number | null
+        "review_text": string | null
+        "platform": string | null
+        "customer_name": string | null
+      }
+      Insert: {
+        "id"?: number
+        "created_at"?: string
+        "customer_id"?: number | null
+        "job_id"?: string | null
+        "opportunity_id"?: number | null
+        "review_date"?: string | null
+        "rating"?: number | null
+        "review_text"?: string | null
+        "platform"?: string | null
+        "customer_name"?: string | null
+      }
+      Update: {
+        "id"?: number
+        "created_at"?: string
+        "customer_id"?: number | null
+        "job_id"?: string | null
+        "opportunity_id"?: number | null
+        "review_date"?: string | null
+        "rating"?: number | null
+        "review_text"?: string | null
+        "platform"?: string | null
+        "customer_name"?: string | null
+      }
+    }
   }
 }

@@ -45,6 +45,11 @@ export class SupabaseService {
         setTimeout(() => reject(new Error('Request timeout')), 10000);
       });
 
+      // For client reviews calculation, we need data from multiple tables
+      if (this.tableName === 'SoldLineitems') {
+        return this.getSoldLineitemsKPIDataWithReviews(dateRange, timeoutPromise);
+      }
+      
       // Route to appropriate KPI calculation based on table
       if (this.tableName === 'Opportunities') {
         return this.getOpportunitiesKPIData(dateRange, timeoutPromise);
@@ -137,6 +142,73 @@ export class SupabaseService {
       // Step 4: Calculate KPIs from filtered data
       console.log('✅ Calculating KPIs from filtered data...');
       return this.calculateKPIsFromSoldLineitems(filteredData);
+  }
+
+  private async getSoldLineitemsKPIDataWithReviews(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
+    // Get the base KPI data from SoldLineitems
+    const baseKPIs = await this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
+    
+    // Now calculate client reviews percentage
+    try {
+      console.log('🔍 Calculating Client Reviews KPI...');
+      
+      // Get won opportunities in the date range
+      const opportunitiesPromise = supabase
+        .from('Opportunities')
+        .select('"Job", "Status", "Date"')
+        .gte('"Date"', dateRange.start.toISOString().split('T')[0])
+        .lte('"Date"', dateRange.end.toISOString().split('T')[0])
+        .or('"Status".ilike.%won%,"Status".ilike.%closed%,"Status".ilike.%completed%');
+
+      const { data: wonOpportunities, error: oppError } = await Promise.race([
+        opportunitiesPromise,
+        timeoutPromise
+      ]) as any;
+
+      if (oppError) {
+        console.warn('Could not fetch opportunities for reviews calculation:', oppError);
+        return baseKPIs; // Return base KPIs without reviews calculation
+      }
+
+      // Get reviews in the date range
+      const reviewsPromise = supabase
+        .from('Reviews')
+        .select('*')
+        .gte('review_date', dateRange.start.toISOString().split('T')[0])
+        .lte('review_date', dateRange.end.toISOString().split('T')[0]);
+
+      const { data: reviews, error: reviewsError } = await Promise.race([
+        reviewsPromise,
+        timeoutPromise
+      ]) as any;
+
+      if (reviewsError) {
+        console.warn('Could not fetch reviews for reviews calculation:', reviewsError);
+        return baseKPIs; // Return base KPIs without reviews calculation
+      }
+
+      const wonOpportunitiesCount = wonOpportunities?.length || 0;
+      const reviewsCount = reviews?.length || 0;
+      
+      const clientReviewPercentage = wonOpportunitiesCount > 0 
+        ? (reviewsCount / wonOpportunitiesCount) * 100 
+        : 0;
+
+      console.log('✅ Client Reviews calculation:', {
+        wonOpportunities: wonOpportunitiesCount,
+        reviews: reviewsCount,
+        percentage: clientReviewPercentage.toFixed(2) + '%'
+      });
+
+      return {
+        ...baseKPIs,
+        clientReviewPercentage
+      };
+
+    } catch (error) {
+      console.warn('Error calculating client reviews, using base KPIs:', error);
+      return baseKPIs;
+    }
   }
 
   private async getOpportunitiesKPIData(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
@@ -389,7 +461,7 @@ export class SupabaseService {
       diagnosticFeeOnlyPercentage: totalJobs > 0 ? (uniqueDiagnosticOnlyJobs / totalJobs) * 100 : 0,
       callbackPercentage: 0, // Would need callback tracking data
       clientComplaintPercentage: 0, // Would need complaint tracking data
-      clientReviewPercentage: 0 // Would need review tracking data
+      clientReviewPercentage: 0 // Calculated separately in getSoldLineitemsKPIDataWithReviews
     }
   }
 
