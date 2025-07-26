@@ -530,7 +530,7 @@ export class SupabaseService {
     const closedWon = data.filter(opp => 
       (opp.Status || '').toLowerCase().includes('won') ||
       (opp.Status || '').toLowerCase().includes('closed won') ||
-      (opp.Status || '').toLowerCase().includes('completed') ||
+      (opp.Status || '').toLowerCase().includes('completed')
       (opp.Status || '').toLowerCase().includes('sold')
     ).length;
     
@@ -595,15 +595,7 @@ export class SupabaseService {
       diagnosticFeeOnlyPercentage: 0, // Not applicable for opportunities
       callbackPercentage: 0, // Would need follow-up data
       clientComplaintPercentage: 0, // Would need complaint tracking
-      clientReviewPercentage: 0, // Calculated separately in calculateClientReviewsKPI
-      debugData: {
-        dataSource: `Supabase Database (${this.tableName})`,
-        tableName: this.tableName,
-        totalOpportunities: totalOpportunities,
-        closedWon: closedWon,
-        highValueOpps: highValueOpps.length,
-        calculatedAt: new Date().toISOString()
-      }
+      clientReviewPercentage: 0 // Calculated separately in calculateClientReviewsKPI
     };
   }
   
@@ -687,7 +679,15 @@ export class SupabaseService {
       diagnosticFeeOnlyPercentage: 0, // Would need line item detail
       callbackPercentage: 0, // Not available in this data
       clientComplaintPercentage: 0, // Not available in this data
-      clientReviewPercentage: 0 // Calculated separately in calculateClientReviewsKPI
+      clientReviewPercentage: 0, // Calculated separately in calculateClientReviewsKPI
+      debugData: {
+        dataSource: `Supabase Database (${this.tableName})`,
+        tableName: this.tableName,
+        totalJobs: totalJobs,
+        completedJobs: completedJobs,
+        highValueJobs: highValueJobs.length,
+        calculatedAt: new Date().toISOString()
+      }
     };
   }
 

@@ -328,10 +328,13 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleShowDebug = (metricId: string, title: string) => {
+    // Get specific debug data for this metric, or fall back to general data
+    const specificDebugData = kpiDebugData[metricId] || kpiDebugData.general || kpiDebugData;
+    
     setDebugModalData({
       metricId,
       title,
-      debugData: kpiDebugData,
+      debugData: specificDebugData,
       dateRange: getDateRangeFromTimeFrame(timeFrame),
       dataSource,
       timeFrame
