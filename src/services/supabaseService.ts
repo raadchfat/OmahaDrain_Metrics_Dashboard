@@ -58,22 +58,9 @@ export class SupabaseService {
       // Always calculate client reviews from Reviews and Opportunities tables
       const clientReviewPercentage = await this.calculateClientReviewsKPI(dateRange, timeoutPromise);
       
-      // Store specific debug data for client reviews
-      const clientReviewsDebugData = {
-        dataSource: 'Reviews + Opportunities Tables',
-        dateRange: dateRange,
-        tablesUsed: ['Reviews', 'Opportunities'],
-        calculatedAt: new Date().toISOString(),
-        formula: '(Reviews in date range) ÷ (Won Opportunities in date range) × 100'
-      };
-      
       return {
         ...baseKPIs,
-        clientReviewPercentage,
-        debugData: {
-          ...baseKPIs.debugData,
-          clientReviewPercentage: clientReviewsDebugData
-        }
+        clientReviewPercentage
       };
     } catch (error) {
       console.error('Error in getKPIData:', error);
@@ -514,7 +501,15 @@ export class SupabaseService {
       diagnosticFeeOnlyPercentage: totalJobs > 0 ? (uniqueDiagnosticOnlyJobs / totalJobs) * 100 : 0,
       callbackPercentage: 0, // Would need callback tracking data
       clientComplaintPercentage: 0, // Would need complaint tracking data
-      clientReviewPercentage: 0 // Calculated separately in calculateClientReviewsKPI
+      clientReviewPercentage: 0, // Calculated separately in calculateClientReviewsKPI
+      debugData: {
+        dataSource: `Supabase Database (${this.tableName})`,
+        tableName: this.tableName,
+        totalJobs: totalJobs,
+        installJobs: jobsWithInstalls.size,
+        totalInstallRevenue: totalInstallRevenue,
+        calculatedAt: new Date().toISOString()
+      }
     }
   }
 
@@ -543,7 +538,7 @@ export class SupabaseService {
     const closedWon = data.filter(opp => 
       (opp.Status || '').toLowerCase().includes('won') ||
       (opp.Status || '').toLowerCase().includes('closed won') ||
-      (opp.Status || '').toLowerCase().includes('completed') ||
+      (opp.Status || '').toLowerCase().includes('completed')
       (opp.Status || '').toLowerCase().includes('sold')
     ).length;
     
