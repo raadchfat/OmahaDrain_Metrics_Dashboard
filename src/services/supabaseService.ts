@@ -45,19 +45,23 @@ export class SupabaseService {
         setTimeout(() => reject(new Error('Request timeout')), 10000);
       });
 
-      // For client reviews calculation, we need data from multiple tables
-      if (this.tableName === 'SoldLineitems') {
-        return this.getSoldLineitemsKPIDataWithReviews(dateRange, timeoutPromise);
+      // Get base KPI data from the primary table
+      let baseKPIs: KPIData;
+      if (this.tableName === 'Opportunities') {
+        baseKPIs = await this.getOpportunitiesKPIData(dateRange, timeoutPromise);
+      } else if (this.tableName === 'Jobs_revenue') {
+        baseKPIs = await this.getJobsRevenueKPIData(dateRange, timeoutPromise);
+      } else {
+        baseKPIs = await this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
       }
       
-      // Route to appropriate KPI calculation based on table
-      if (this.tableName === 'Opportunities') {
-        return this.getOpportunitiesKPIData(dateRange, timeoutPromise);
-      } else if (this.tableName === 'Jobs_revenue') {
-        return this.getJobsRevenueKPIData(dateRange, timeoutPromise);
-      } else {
-        return this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
-      }
+      // Always calculate client reviews from Reviews and Opportunities tables
+      const clientReviewPercentage = await this.calculateClientReviewsKPI(dateRange, timeoutPromise);
+      
+      return {
+        ...baseKPIs,
+        clientReviewPercentage
+      };
     } catch (error) {
       console.error('Error in getKPIData:', error);
       throw error;
@@ -144,17 +148,14 @@ export class SupabaseService {
       return this.calculateKPIsFromSoldLineitems(filteredData);
   }
 
-  private async getSoldLineitemsKPIDataWithReviews(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
-    // Get the base KPI data from SoldLineitems
-    const baseKPIs = await this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
-    
-    // Now calculate client reviews percentage
+  // Separate method to calculate client reviews KPI that works with any primary table
+  private async calculateClientReviewsKPI(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<number> {
     try {
       console.log('🔍 Calculating Client Reviews KPI...');
       console.log('Date range for reviews calculation:', {
         start: dateRange.start.toISOString().split('T')[0],
         end: dateRange.end.toISOString().split('T')[0],
-        timeFrame: 'Current Month'
+        primaryTable: this.tableName
       });
       
       // Get won opportunities in the date range
@@ -174,7 +175,7 @@ export class SupabaseService {
       if (oppError) {
         console.warn('Could not fetch opportunities for reviews calculation:', oppError);
         console.error('Opportunities query error details:', oppError);
-        return baseKPIs; // Return base KPIs without reviews calculation
+        return 0; // Return 0 if can't fetch opportunities
       }
 
       console.log('✅ Won opportunities query result:', {
@@ -199,7 +200,7 @@ export class SupabaseService {
       if (reviewsError) {
         console.warn('Could not fetch reviews for reviews calculation:', reviewsError);
         console.error('Reviews query error details:', reviewsError);
-        return baseKPIs; // Return base KPIs without reviews calculation
+        return 0; // Return 0 if can't fetch reviews
       }
 
       console.log('✅ Reviews query result:', {
@@ -240,15 +241,13 @@ export class SupabaseService {
           customer: r['Customer Name']
         })));
       }
-      return {
-        ...baseKPIs,
-        clientReviewPercentage
-      };
+      
+      return clientReviewPercentage;
 
     } catch (error) {
       console.warn('Error calculating client reviews, using base KPIs:', error);
       console.error('Full error details:', error);
-      return baseKPIs;
+      return 0;
     }
   }
 
@@ -502,7 +501,7 @@ export class SupabaseService {
       diagnosticFeeOnlyPercentage: totalJobs > 0 ? (uniqueDiagnosticOnlyJobs / totalJobs) * 100 : 0,
       callbackPercentage: 0, // Would need callback tracking data
       clientComplaintPercentage: 0, // Would need complaint tracking data
-      clientReviewPercentage: 0 // Calculated separately in getSoldLineitemsKPIDataWithReviews
+      clientReviewPercentage: 0 // Calculated separately in calculateClientReviewsKPI
     }
   }
 
@@ -596,7 +595,7 @@ export class SupabaseService {
       diagnosticFeeOnlyPercentage: 0, // Not applicable for opportunities
       callbackPercentage: 0, // Would need follow-up data
       clientComplaintPercentage: 0, // Would need complaint tracking
-      clientReviewPercentage: 0 // Calculated separately when using SoldLineitems as primary table
+      clientReviewPercentage: 0 // Calculated separately in calculateClientReviewsKPI
     };
   }
   
@@ -680,7 +679,7 @@ export class SupabaseService {
       diagnosticFeeOnlyPercentage: 0, // Would need line item detail
       callbackPercentage: 0, // Not available in this data
       clientComplaintPercentage: 0, // Not available in this data
-      clientReviewPercentage: 0 // Not available in this data
+      clientReviewPercentage: 0 // Calculated separately in calculateClientReviewsKPI
     };
   }
 
