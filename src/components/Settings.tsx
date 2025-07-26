@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Save, TestTube, Key, Database, Clock, AlertCircle, Plus, Trash2, Edit3, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Eye } from 'lucide-react';
 import { GoogleSheetConfig, MultiSheetConfig } from '../types';
 import { SupabaseSettings } from './SupabaseSettings';
 import { ScoringSettings } from './ScoringSettings';
+import { DataInspector } from './DataInspector';
+import { DataViewer } from './DataViewer';
 
 export const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'tables' | 'scoring' | 'sheets'>('tables');
@@ -118,7 +121,9 @@ export const Settings: React.FC = () => {
   const tabs = [
     { id: 'tables' as const, name: 'Available Tables', icon: Database },
     { id: 'scoring' as const, name: 'KPI Scoring Ranges', icon: TestTube },
-    { id: 'sheets' as const, name: 'Google Sheets', icon: Key }
+    { id: 'sheets' as const, name: 'Google Sheets', icon: Key },
+    { id: 'inspector' as const, name: 'Data Inspector', icon: Search },
+    { id: 'dataviewer' as const, name: 'Database Viewer', icon: Eye }
   ];
 
   const renderTabContent = () => {
@@ -128,6 +133,12 @@ export const Settings: React.FC = () => {
       
       case 'scoring':
         return <ScoringSettings />;
+      
+      case 'inspector':
+        return <DataInspector />;
+      
+      case 'dataviewer':
+        return <DataViewer />;
       
       case 'sheets':
         return (
