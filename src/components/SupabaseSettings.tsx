@@ -33,6 +33,13 @@ export const SupabaseSettings: React.FC = () => {
       description: 'Customer review data with ratings and feedback (ID, Rating, Review Date, Customer Name, Source, Status, Technician Name)',
       primaryDateColumn: 'Review Date',
       isActive: true
+    },
+    {
+      name: 'memberships',
+      displayName: 'Memberships',
+      description: 'Membership sales data with programs, systems, and completion status',
+      primaryDateColumn: 'sold_on_clean',
+      isActive: true
     }
   ];
   

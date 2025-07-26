@@ -224,5 +224,46 @@ export type Database = {
         "Technician Name"?: string | null
       }
     }
+    memberships: {
+      Row: {
+        "Sold_On": string | null
+        "Invoice": string | null
+        "Job": string | null
+        "Customer": string | null
+        "Program": string | null
+        "Systems": string | null
+        "Department": string | null
+        "Owner": string | null
+        "Completed": string | null
+        "Primary Key": string
+        sold_on_clean: string | null
+      }
+      Insert: {
+        "Sold_On"?: string | null
+        "Invoice"?: string | null
+        "Job"?: string | null
+        "Customer"?: string | null
+        "Program"?: string | null
+        "Systems"?: string | null
+        "Department"?: string | null
+        "Owner"?: string | null
+        "Completed"?: string | null
+        "Primary Key": string
+        sold_on_clean?: string | null
+      }
+      Update: {
+        "Sold_On"?: string | null
+        "Invoice"?: string | null
+        "Job"?: string | null
+        "Customer"?: string | null
+        "Program"?: string | null
+        "Systems"?: string | null
+        "Department"?: string | null
+        "Owner"?: string | null
+        "Completed"?: string | null
+        "Primary Key"?: string
+        sold_on_clean?: string | null
+      }
+    }
   }
 }

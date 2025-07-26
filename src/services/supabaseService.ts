@@ -766,6 +766,8 @@ export class SupabaseService {
         orderColumn = '"Job"';
       } else if (this.tableName === 'Reviews') {
         orderColumn = '"Review Date"';
+      } else if (this.tableName === 'memberships') {
+        orderColumn = 'sold_on_clean';
       } else {
         orderColumn = '"Invoice Date"';
       }
@@ -838,6 +840,8 @@ export class SupabaseService {
         selectColumns = '"Job", "Customer", "Revenue", "Department", "Completed", "Primary Key"';
       } else if (this.tableName === 'Reviews') {
         selectColumns = '"ID", "Review Date", "Rating", "Customer Name", "Source", "Status"';
+      } else if (this.tableName === 'memberships') {
+        selectColumns = '"Primary Key", "Sold_On", "Job", "Customer", "Program", "Department", sold_on_clean';
       } else {
         selectColumns = '"Primary Key", "Customer ID", "Invoice Date", "Department", "Price"';
       }
@@ -944,6 +948,8 @@ export class SupabaseService {
         primaryKeyColumn = '"Job"';
       } else if (this.tableName === 'Reviews') {
         primaryKeyColumn = '"ID"';
+      } else if (this.tableName === 'memberships') {
+        primaryKeyColumn = '"Primary Key"';
       } else {
         primaryKeyColumn = '"Primary Key"';
       }
