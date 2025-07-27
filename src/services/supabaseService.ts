@@ -40,14 +40,6 @@ export class SupabaseService {
       console.log('Using Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
       console.log('Table name:', this.tableName);
       
-      // Add debugging for the primary table as well
-      console.log('🔍 Checking primary table data...');
-      const { count: primaryTableCount } = await supabase
-        .from(this.tableName)
-        .select('*', { count: 'exact', head: true });
-      
-      console.log(`📊 Total records in ${this.tableName}:`, primaryTableCount);
-      
       // Add timeout to prevent hanging requests
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Request timeout')), 10000);
@@ -88,144 +80,159 @@ export class SupabaseService {
 
   // Get opportunities with their related jobs revenue using Job column as foreign key
   private async getOpportunitiesWithJobsRevenue(dateRange: DateRange): Promise<any[]> {
-    console.log('🔍 Fetching opportunities and their related jobs revenue...');
+    console.log('🔍 Starting getOpportunitiesWithJobsRevenue with date range:', dateRange);
+    
+    try {
+      // Add debugging for the primary table as well
+      console.log('🔍 Checking primary table data...');
+      const { count: primaryTableCount } = await supabase
+        .from(this.tableName)
+        .select('*', { count: 'exact', head: true });
+      
+      console.log(`📊 Total records in ${this.tableName}:`, primaryTableCount);
 
-    // Step 1: Get opportunities in the date range
-    console.log('📅 Querying Opportunities table with date range:', {
-      start: dateRange.start.toISOString().split('T')[0],
-      end: dateRange.end.toISOString().split('T')[0]
-    });
-    
-    // First, let's see what's actually in the Opportunities table
-    console.log('🔍 Checking Opportunities table structure...');
-    const { data: sampleOpportunities, error: sampleError } = await supabase
-      .from('Opportunities')
-      .select('*')
-      .limit(5);
-    
-    if (sampleError) {
-      console.error('❌ Error fetching sample opportunities:', sampleError);
-    } else {
-      console.log('📊 Sample opportunities data:', sampleOpportunities);
-      if (sampleOpportunities && sampleOpportunities.length > 0) {
-        console.log('📅 Sample Date values:', sampleOpportunities.map(opp => ({
-          Date: opp.Date,
-          dateType: typeof opp.Date,
-          parsedDate: opp.Date ? new Date(opp.Date) : null
+      console.log('🔍 Fetching opportunities and their related jobs revenue...');
+
+      // Step 1: Get opportunities in the date range
+      console.log('📅 Querying Opportunities table with date range:', {
+        start: dateRange.start.toISOString().split('T')[0],
+        end: dateRange.end.toISOString().split('T')[0]
+      });
+      
+      // First, let's see what's actually in the Opportunities table
+      console.log('🔍 Checking Opportunities table structure...');
+      const { data: sampleOpportunities, error: sampleError } = await supabase
+        .from('Opportunities')
+        .select('*')
+        .limit(5);
+      
+      if (sampleError) {
+        console.error('❌ Error fetching sample opportunities:', sampleError);
+      } else {
+        console.log('📊 Sample opportunities data:', sampleOpportunities);
+        if (sampleOpportunities && sampleOpportunities.length > 0) {
+          console.log('📅 Sample Date values:', sampleOpportunities.map(opp => ({
+            Date: opp.Date,
+            dateType: typeof opp.Date,
+            parsedDate: opp.Date ? new Date(opp.Date) : null
+          })));
+        }
+      }
+      
+      // Get total count of opportunities
+      const { count: totalOpportunities } = await supabase
+        .from('Opportunities')
+        .select('*', { count: 'exact', head: true });
+      
+      console.log('📊 Total opportunities in table:', totalOpportunities);
+      
+      console.log('🔍 Querying opportunities with date filter...');
+      console.log('Filter: Date >= ', dateRange.start.toISOString().split('T')[0]);
+      console.log('Filter: Date <= ', dateRange.end.toISOString().split('T')[0]);
+      
+      const { data: opportunities, error: oppError } = await supabase
+        .from('Opportunities')
+        .select('"Job", "Date", "Customer", "Revenue", "Status", "Department", "Lead Type", "Primary Key"')
+        .gte('"Date"', dateRange.start.toISOString().split('T')[0])
+        .lte('"Date"', dateRange.end.toISOString().split('T')[0]);
+
+      if (oppError) {
+        console.error('Error fetching opportunities:', oppError);
+        throw oppError;
+      }
+
+      console.log(`✅ Found ${opportunities?.length || 0} opportunities in date range`);
+      
+      // If no opportunities found with date filter, try without date filter to see if there's any data
+      if (!opportunities || opportunities.length === 0) {
+        console.log('🔍 No opportunities found with date filter, checking recent opportunities...');
+        const { data: recentOpportunities } = await supabase
+          .from('Opportunities')
+          .select('Date, Job, Customer, Status')
+          .order('Date', { ascending: false })
+          .limit(10);
+        
+        console.log('📊 Recent opportunities (last 10):', recentOpportunities);
+      }
+      
+      if (!opportunities || opportunities.length === 0) {
+        console.warn('⚠️ No opportunities found in date range - this will result in 0 KPIs');
+        return [];
+      }
+      
+      // Log sample opportunities
+      console.log('📋 Sample opportunities:', opportunities.slice(0, 3).map(opp => ({
+        Job: opp.Job,
+        Date: opp.Date,
+        Customer: opp.Customer,
+        Revenue: opp.Revenue,
+        Status: opp.Status
+      })));
+
+      // Step 2: Get unique job numbers from opportunities (convert to numbers)
+      const jobNumbers = [...new Set(opportunities.map(opp => Number(opp.Job)).filter(job => !isNaN(job)))];
+      
+      console.log(`🔍 Looking up jobs revenue for ${jobNumbers.length} unique jobs:`, jobNumbers.slice(0, 10));
+      
+      if (jobNumbers.length === 0) {
+        console.warn('⚠️ No valid job numbers found in opportunities - cannot link to jobs revenue');
+        return [];
+      }
+
+      // Step 3: Get jobs revenue for those specific jobs
+      const { data: jobsRevenue, error: jobsError } = await supabase
+        .from('Jobs_revenue')
+        .select('"Job", "Department", "Revenue", "Customer", "Completed", "Owner", "Primary Key"')
+        .in('"Job"', jobNumbers);
+
+      if (jobsError) {
+        console.error('Error fetching jobs revenue:', jobsError);
+        throw jobsError;
+      }
+
+      console.log(`✅ Found ${jobsRevenue?.length || 0} jobs revenue records for those jobs`);
+      
+      if (!jobsRevenue || jobsRevenue.length === 0) {
+        console.warn('⚠️ No jobs revenue found for the opportunity job numbers');
+        console.log('🔍 Opportunity job numbers:', jobNumbers.slice(0, 10));
+        console.log('💡 This might mean the Job numbers in Opportunities table don\'t match Jobs_revenue table');
+      } else {
+        console.log('📋 Sample jobs revenue:', jobsRevenue.slice(0, 3).map(job => ({
+          Job: job.Job,
+          Revenue: job.Revenue,
+          Department: job.Department,
+          Completed: job.Completed
         })));
       }
-    }
-    
-    // Get total count of opportunities
-    const { count: totalOpportunities } = await supabase
-      .from('Opportunities')
-      .select('*', { count: 'exact', head: true });
-    
-    console.log('📊 Total opportunities in table:', totalOpportunities);
-    
-    console.log('🔍 Querying opportunities with date filter...');
-    console.log('Filter: Date >= ', dateRange.start.toISOString().split('T')[0]);
-    console.log('Filter: Date <= ', dateRange.end.toISOString().split('T')[0]);
-    
-    const { data: opportunities, error: oppError } = await supabase
-      .from('Opportunities')
-      .select('"Job", "Date", "Customer", "Revenue", "Status", "Department", "Lead Type", "Primary Key"')
-      .gte('"Date"', dateRange.start.toISOString().split('T')[0])
-      .lte('"Date"', dateRange.end.toISOString().split('T')[0]);
 
-    if (oppError) {
-      console.error('Error fetching opportunities:', oppError);
-      throw oppError;
-    }
+      // Step 4: Combine opportunities with their jobs revenue
+      const jobsWithRelationships = opportunities.map(opportunity => {
+        const relatedJobRevenue = (jobsRevenue || []).find(job => Number(job.Job) === Number(opportunity.Job));
+        
+        return {
+          opportunity,
+          jobRevenue: relatedJobRevenue,
+          totalJobRevenue: Number(relatedJobRevenue?.Revenue) || 0,
+          hasHighValueRevenue: (Number(relatedJobRevenue?.Revenue) || 0) >= 10000,
+          isCompleted: (relatedJobRevenue?.Completed || '').toLowerCase().includes('yes') ||
+                      (relatedJobRevenue?.Completed || '').toLowerCase().includes('complete'),
+          department: relatedJobRevenue?.Department || opportunity.Department
+        };
+      });
 
-    console.log(`✅ Found ${opportunities?.length || 0} opportunities in date range`);
-    
-    // If no opportunities found with date filter, try without date filter to see if there's any data
-    if (!opportunities || opportunities.length === 0) {
-      console.log('🔍 No opportunities found with date filter, checking recent opportunities...');
-      const { data: recentOpportunities } = await supabase
-        .from('Opportunities')
-        .select('Date, Job, Customer, Status')
-        .order('Date', { ascending: false })
-        .limit(10);
+      const linkedCount = jobsWithRelationships.filter(job => job.jobRevenue).length;
+      console.log(`🔗 Successfully linked ${linkedCount}/${jobsWithRelationships.length} opportunities with their jobs revenue`);
       
-      console.log('📊 Recent opportunities (last 10):', recentOpportunities);
+      if (linkedCount === 0) {
+        console.error('❌ No opportunities could be linked to jobs revenue!');
+        console.log('🔍 This suggests the Job column values don\'t match between tables');
+      }
+
+      return jobsWithRelationships;
+    } catch (error) {
+      console.error('❌ Error in getOpportunitiesWithJobsRevenue:', error);
+      throw error;
     }
-    
-    if (!opportunities || opportunities.length === 0) {
-      console.warn('⚠️ No opportunities found in date range - this will result in 0 KPIs');
-      return [];
-    }
-    
-    // Log sample opportunities
-    console.log('📋 Sample opportunities:', opportunities.slice(0, 3).map(opp => ({
-      Job: opp.Job,
-      Date: opp.Date,
-      Customer: opp.Customer,
-      Revenue: opp.Revenue,
-      Status: opp.Status
-    })));
-
-    // Step 2: Get unique job numbers from opportunities (convert to numbers)
-    const jobNumbers = [...new Set(opportunities.map(opp => Number(opp.Job)).filter(job => !isNaN(job)))];
-    
-    console.log(`🔍 Looking up jobs revenue for ${jobNumbers.length} unique jobs:`, jobNumbers.slice(0, 10));
-    
-    if (jobNumbers.length === 0) {
-      console.warn('⚠️ No valid job numbers found in opportunities - cannot link to jobs revenue');
-      return [];
-    }
-
-    // Step 3: Get jobs revenue for those specific jobs
-    const { data: jobsRevenue, error: jobsError } = await supabase
-      .from('Jobs_revenue')
-      .select('"Job", "Department", "Revenue", "Customer", "Completed", "Owner", "Primary Key"')
-      .in('"Job"', jobNumbers);
-
-    if (jobsError) {
-      console.error('Error fetching jobs revenue:', jobsError);
-      throw jobsError;
-    }
-
-    console.log(`✅ Found ${jobsRevenue?.length || 0} jobs revenue records for those jobs`);
-    
-    if (!jobsRevenue || jobsRevenue.length === 0) {
-      console.warn('⚠️ No jobs revenue found for the opportunity job numbers');
-      console.log('🔍 Opportunity job numbers:', jobNumbers.slice(0, 10));
-      console.log('💡 This might mean the Job numbers in Opportunities table don\'t match Jobs_revenue table');
-    } else {
-      console.log('📋 Sample jobs revenue:', jobsRevenue.slice(0, 3).map(job => ({
-        Job: job.Job,
-        Revenue: job.Revenue,
-        Department: job.Department,
-        Completed: job.Completed
-      })));
-    }
-
-    // Step 4: Combine opportunities with their jobs revenue
-    const jobsWithRelationships = opportunities.map(opportunity => {
-      const relatedJobRevenue = (jobsRevenue || []).find(job => Number(job.Job) === Number(opportunity.Job));
-      
-      return {
-        opportunity,
-        jobRevenue: relatedJobRevenue,
-        totalJobRevenue: Number(relatedJobRevenue?.Revenue) || 0,
-        hasHighValueRevenue: (Number(relatedJobRevenue?.Revenue) || 0) >= 10000,
-        isCompleted: (relatedJobRevenue?.Completed || '').toLowerCase().includes('yes') ||
-                    (relatedJobRevenue?.Completed || '').toLowerCase().includes('complete'),
-        department: relatedJobRevenue?.Department || opportunity.Department
-      };
-    });
-
-    const linkedCount = jobsWithRelationships.filter(job => job.jobRevenue).length;
-    console.log(`🔗 Successfully linked ${linkedCount}/${jobsWithRelationships.length} opportunities with their jobs revenue`);
-    
-    if (linkedCount === 0) {
-      console.error('❌ No opportunities could be linked to jobs revenue!');
-      console.log('🔍 This suggests the Job column values don\'t match between tables');
-    }
-
-    return jobsWithRelationships;
   }
 
   // Calculate KPIs from opportunities-jobs revenue relationships data
@@ -926,7 +933,6 @@ export class SupabaseService {
       clientReviewPercentage: 0, // Calculated separately in calculateClientReviewsKPI
       debugData: {
         dataSource: `Supabase Database (${this.tableName})`,
-        tableName: this.tableName,
         totalJobs: totalJobs,
         completedJobs: completedJobs,
         highValueJobs: highValueJobs.length,
@@ -937,7 +943,11 @@ export class SupabaseService {
 
   async getTimeSeriesData(dateRange: DateRange): Promise<TimeSeriesData[]> {
     try {
-      const dateColumn = this.tableName === 'Opportunities' ? '"Date"' : 'Invoice Date';
+      console.log('📅 Date range:', {
+        start: formatStandardDate(dateRange.start),
+        end: formatStandardDate(dateRange.end)
+      });
+      
       const selectColumns = this.tableName === 'Opportunities' 
         ? '"Date", "Revenue", "Status", "Department"'
         : '*';
@@ -954,12 +964,8 @@ export class SupabaseService {
         throw error;
       }
 
-      if (!data || data.length === 0) {
-        return [];
-      }
-
-      // Filter data by date range using JavaScript for better control
-      const filteredData = data.filter(row => {
+      // Filter data by date range using standardized date parsing
+      const filteredData = (data || []).filter(row => {
         let dateValue: Date | null = null;
         
         if (this.tableName === 'Opportunities') {
@@ -975,6 +981,7 @@ export class SupabaseService {
           dateValue = parseStandardDate(row['Invoice Date']);
         }
         
+        if (!dateValue) return false;
         return dateValue ? isDateInRange(dateValue, dateRange) : false;
       });
 
@@ -1256,11 +1263,6 @@ export class SupabaseService {
   // Legacy method for backward compatibility
   async getTotalCount(): Promise<number> {
     try {
-      console.log('📅 Date range:', {
-        start: formatStandardDate(dateRange.start),
-        end: formatStandardDate(dateRange.end)
-      });
-      
       // Get all opportunities and filter by date in JavaScript for better debugging
       console.log('🔍 Fetching all opportunities for date filtering...');
       const { data: allOpportunities, error: allError } = await supabase
@@ -1330,6 +1332,19 @@ export class SupabaseService {
                       (opp.Status || '').toLowerCase().includes('sold'),
           department: opp.Department
         };
+      });
+
+      return linkedData.length;
+    } catch (error) {
+      console.error('Error in getTotalCount:', error);
+      throw error;
+    }
+  }
+
+  async testConnectionSimple(): Promise<boolean> {
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection test timeout')), 5000);
       });
       
       let primaryKeyColumn: string;
