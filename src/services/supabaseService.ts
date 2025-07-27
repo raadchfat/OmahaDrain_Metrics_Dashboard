@@ -49,11 +49,12 @@ export class SupabaseService {
       let baseKPIs: KPIData;
       
       try {
-        // Try enhanced calculation using job relationships
+        // Try enhanced calculation using job relationships only if we have both tables
+        console.log('🔍 Attempting enhanced KPI calculation with job relationships...');
         baseKPIs = await this.calculateKPIsWithJobRelationships(dateRange);
-        console.log('✅ Using enhanced KPI calculation with job relationships');
+        console.log('✅ Successfully used enhanced KPI calculation with job relationships');
       } catch (relationshipError) {
-        console.warn('Job relationship calculation failed, falling back to single table:', relationshipError);
+        console.warn('❌ Job relationship calculation failed, falling back to single table calculation:', relationshipError);
         
         // Fallback to single table calculations
         if (this.tableName === 'Opportunities') {
@@ -63,6 +64,7 @@ export class SupabaseService {
         } else {
           baseKPIs = await this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
         }
+        console.log('✅ Fallback calculation completed');
       }
       
       // Always calculate client reviews from Reviews and Opportunities tables
@@ -83,6 +85,11 @@ export class SupabaseService {
     console.log('🔍 Fetching opportunities and their related jobs revenue...');
 
     // Step 1: Get opportunities in the date range
+    console.log('📅 Querying Opportunities table with date range:', {
+      start: dateRange.start.toISOString().split('T')[0],
+      end: dateRange.end.toISOString().split('T')[0]
+    });
+    
     const { data: opportunities, error: oppError } = await supabase
       .from('Opportunities')
       .select('"Job", "Date", "Customer", "Revenue", "Status", "Department", "Lead Type", "Primary Key"')
@@ -95,11 +102,30 @@ export class SupabaseService {
     }
 
     console.log(`✅ Found ${opportunities?.length || 0} opportunities in date range`);
+    
+    if (!opportunities || opportunities.length === 0) {
+      console.warn('⚠️ No opportunities found in date range - this will result in 0 KPIs');
+      return [];
+    }
+    
+    // Log sample opportunities
+    console.log('📋 Sample opportunities:', opportunities.slice(0, 3).map(opp => ({
+      Job: opp.Job,
+      Date: opp.Date,
+      Customer: opp.Customer,
+      Revenue: opp.Revenue,
+      Status: opp.Status
+    })));
 
     // Step 2: Get unique job numbers from opportunities (convert to numbers)
     const jobNumbers = [...new Set(opportunities.map(opp => Number(opp.Job)).filter(job => !isNaN(job)))];
     
-    console.log(`🔍 Looking up jobs revenue for ${jobNumbers.length} unique jobs...`);
+    console.log(`🔍 Looking up jobs revenue for ${jobNumbers.length} unique jobs:`, jobNumbers.slice(0, 10));
+    
+    if (jobNumbers.length === 0) {
+      console.warn('⚠️ No valid job numbers found in opportunities - cannot link to jobs revenue');
+      return [];
+    }
 
     // Step 3: Get jobs revenue for those specific jobs
     const { data: jobsRevenue, error: jobsError } = await supabase
@@ -113,6 +139,19 @@ export class SupabaseService {
     }
 
     console.log(`✅ Found ${jobsRevenue?.length || 0} jobs revenue records for those jobs`);
+    
+    if (!jobsRevenue || jobsRevenue.length === 0) {
+      console.warn('⚠️ No jobs revenue found for the opportunity job numbers');
+      console.log('🔍 Opportunity job numbers:', jobNumbers.slice(0, 10));
+      console.log('💡 This might mean the Job numbers in Opportunities table don\'t match Jobs_revenue table');
+    } else {
+      console.log('📋 Sample jobs revenue:', jobsRevenue.slice(0, 3).map(job => ({
+        Job: job.Job,
+        Revenue: job.Revenue,
+        Department: job.Department,
+        Completed: job.Completed
+      })));
+    }
 
     // Step 4: Combine opportunities with their jobs revenue
     const jobsWithRelationships = opportunities.map(opportunity => {
@@ -129,7 +168,13 @@ export class SupabaseService {
       };
     });
 
-    console.log(`🔗 Successfully linked ${jobsWithRelationships.length} opportunities with their jobs revenue`);
+    const linkedCount = jobsWithRelationships.filter(job => job.jobRevenue).length;
+    console.log(`🔗 Successfully linked ${linkedCount}/${jobsWithRelationships.length} opportunities with their jobs revenue`);
+    
+    if (linkedCount === 0) {
+      console.error('❌ No opportunities could be linked to jobs revenue!');
+      console.log('🔍 This suggests the Job column values don\'t match between tables');
+    }
 
     return jobsWithRelationships;
   }
@@ -139,7 +184,19 @@ export class SupabaseService {
     console.log('=== CALCULATING KPIs FROM OPPORTUNITIES-JOBS REVENUE RELATIONSHIPS ===');
     console.log('Total jobs with relationships:', jobsWithRelationships.length);
 
+    if (jobsWithRelationships.length === 0) {
+      console.warn('⚠️ No job relationships found - returning zero KPIs');
+      return this.getDefaultKPIData();
+    }
+
     const totalJobs = jobsWithRelationships.length;
+    const linkedJobs = jobsWithRelationships.filter(job => job.jobRevenue);
+    
+    console.log('📊 Relationship summary:', {
+      totalOpportunities: totalJobs,
+      linkedToJobsRevenue: linkedJobs.length,
+      unlinkedOpportunities: totalJobs - linkedJobs.length
+    });
 
     // Install calls: Jobs with revenue >= $10k
     const installJobs = jobsWithRelationships.filter(job => job.hasHighValueRevenue);
@@ -182,11 +239,14 @@ export class SupabaseService {
     const zeroRevenueJobs = jobsWithRelationships.filter(job => job.totalJobRevenue === 0);
     const zeroRevenueCallPercentage = totalJobs > 0 ? (zeroRevenueJobs.length / totalJobs) * 100 : 0;
 
-    console.log('Install jobs:', installJobs.length);
-    console.log('Jetting jobs:', jettingJobs.length);
-    console.log('Descaling jobs:', descalingJobs.length);
-    console.log('Won opportunities:', wonOpportunities.length);
-    console.log('Completed jobs:', completedJobs.length);
+    console.log('📈 KPI Calculation Results:');
+    console.log('  Install jobs (≥$10k):', installJobs.length, `(${installCallsPercentage.toFixed(1)}%)`);
+    console.log('  Jetting jobs:', jettingJobs.length, `(${jettingJobsPercentage.toFixed(1)}%)`);
+    console.log('  Descaling jobs:', descalingJobs.length, `(${descalingJobsPercentage.toFixed(1)}%)`);
+    console.log('  Won opportunities:', wonOpportunities.length);
+    console.log('  Completed jobs:', completedJobs.length, `(${jobEfficiency.toFixed(1)}%)`);
+    console.log('  Zero revenue jobs:', zeroRevenueJobs.length, `(${zeroRevenueCallPercentage.toFixed(1)}%)`);
+    console.log('  Install revenue per call: $', installRevenuePerCall.toFixed(2));
 
     return {
       installCallsPercentage,
