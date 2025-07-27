@@ -32,6 +32,14 @@ export class SupabaseService {
     try {
       console.log('=== SUPABASE DATE FILTERING DEBUG ===');
       console.log('Requested date range:', {
+    
+    // Add debugging for the primary table as well
+    console.log('🔍 Checking primary table data...');
+    const { count: primaryTableCount } = await this.supabase
+      .from(this.tableName)
+      .select('*', { count: 'exact', head: true });
+    
+    console.log(`📊 Total records in ${this.tableName}:`, primaryTableCount);
         start: dateRange.start.toISOString(),
         end: dateRange.end.toISOString(),
         startDate: dateRange.start.toISOString().split('T')[0],
@@ -88,7 +96,38 @@ export class SupabaseService {
     console.log('📅 Querying Opportunities table with date range:', {
       start: dateRange.start.toISOString().split('T')[0],
       end: dateRange.end.toISOString().split('T')[0]
+    
+    // First, let's see what's actually in the Opportunities table
+    console.log('🔍 Checking Opportunities table structure...');
+    const { data: sampleOpportunities, error: sampleError } = await this.supabase
+      .from('Opportunities')
+      .select('*')
+      .limit(5);
+    
+    if (sampleError) {
+      console.error('❌ Error fetching sample opportunities:', sampleError);
+    } else {
+      console.log('📊 Sample opportunities data:', sampleOpportunities);
+      if (sampleOpportunities && sampleOpportunities.length > 0) {
+        console.log('📅 Sample Date values:', sampleOpportunities.map(opp => ({
+          Date: opp.Date,
+          dateType: typeof opp.Date,
+          parsedDate: opp.Date ? new Date(opp.Date) : null
+        })));
+      }
+    }
+    
+    // Get total count of opportunities
+    const { count: totalOpportunities } = await this.supabase
+      .from('Opportunities')
+      .select('*', { count: 'exact', head: true });
+    
+    console.log('📊 Total opportunities in table:', totalOpportunities);
     });
+    
+    console.log('🔍 Querying opportunities with date filter...');
+    console.log('Filter: Date >= ', dateRange.start.toISOString().split('T')[0]);
+    console.log('Filter: Date <= ', dateRange.end.toISOString().split('T')[0]);
     
     const { data: opportunities, error: oppError } = await supabase
       .from('Opportunities')
@@ -102,6 +141,18 @@ export class SupabaseService {
     }
 
     console.log(`✅ Found ${opportunities?.length || 0} opportunities in date range`);
+    
+    // If no opportunities found with date filter, try without date filter to see if there's any data
+    if (!opportunities || opportunities.length === 0) {
+      console.log('🔍 No opportunities found with date filter, checking recent opportunities...');
+      const { data: recentOpportunities } = await this.supabase
+        .from('Opportunities')
+        .select('Date, Job, Customer, Status')
+        .order('Date', { ascending: false })
+        .limit(10);
+      
+      console.log('📊 Recent opportunities (last 10):', recentOpportunities);
+    }
     
     if (!opportunities || opportunities.length === 0) {
       console.warn('⚠️ No opportunities found in date range - this will result in 0 KPIs');
@@ -909,7 +960,7 @@ export class SupabaseService {
         return this.calculateTimeSeriesFromOpportunities(data || []);
       } else if (this.tableName === 'Jobs_revenue') {
         return this.calculateTimeSeriesFromJobsRevenue(data || []);
-      } else {
+        console.log('⚠️ No relationship data found, falling back to single table calculation from', this.tableName);
         return this.calculateTimeSeriesFromSoldLineitems(data || []);
       }
     } catch (error) {
