@@ -45,14 +45,24 @@ export class SupabaseService {
         setTimeout(() => reject(new Error('Request timeout')), 10000);
       });
 
-      // Get base KPI data from the primary table
+      // Try to use job relationships for more accurate calculations
       let baseKPIs: KPIData;
-      if (this.tableName === 'Opportunities') {
-        baseKPIs = await this.getOpportunitiesKPIData(dateRange, timeoutPromise);
-      } else if (this.tableName === 'Jobs_revenue') {
-        baseKPIs = await this.getJobsRevenueKPIData(dateRange, timeoutPromise);
-      } else {
-        baseKPIs = await this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
+      
+      try {
+        // Try enhanced calculation using job relationships
+        baseKPIs = await this.calculateKPIsWithJobRelationships(dateRange);
+        console.log('✅ Using enhanced KPI calculation with job relationships');
+      } catch (relationshipError) {
+        console.warn('Job relationship calculation failed, falling back to single table:', relationshipError);
+        
+        // Fallback to single table calculations
+        if (this.tableName === 'Opportunities') {
+          baseKPIs = await this.getOpportunitiesKPIData(dateRange, timeoutPromise);
+        } else if (this.tableName === 'Jobs_revenue') {
+          baseKPIs = await this.getJobsRevenueKPIData(dateRange, timeoutPromise);
+        } else {
+          baseKPIs = await this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
+        }
       }
       
       // Always calculate client reviews from Reviews and Opportunities tables

@@ -52,7 +52,7 @@ export type Database = {
       Opportunities: {
         Row: {
           "Date": string | null
-          "Job": number
+          "Job": string | null
           "Tags": string | null
           "Customer": string | null
           "Email": string | null
@@ -73,11 +73,11 @@ export type Database = {
           "Membership Opportunity": string | null
           "Membership Sold": string | null
           "Revenue": number | null
-          "Primary Key": number
+          "Primary Key": string
         }
         Insert: {
           "Date"?: string | null
-          "Job": number
+          "Job"?: string | null
           "Tags"?: string | null
           "Customer"?: string | null
           "Email"?: string | null
@@ -98,11 +98,11 @@ export type Database = {
           "Membership Opportunity"?: string | null
           "Membership Sold"?: string | null
           "Revenue"?: number | null
-          "Primary Key": number
+          "Primary Key": string
         }
         Update: {
           "Date"?: string | null
-          "Job"?: number
+          "Job"?: string | null
           "Tags"?: string | null
           "Customer"?: string | null
           "Email"?: string | null
@@ -123,7 +123,7 @@ export type Database = {
           "Membership Opportunity"?: string | null
           "Membership Sold"?: string | null
           "Revenue"?: number | null
-          "Primary Key"?: number
+          "Primary Key"?: string
         }
       }
     }
