@@ -158,3 +158,70 @@ export function parseDateFromRow(row: any[], dateColumnIndex: number = 0): Date 
   
   return parsedDate;
 }
+
+// Standardized date parsing function for database values
+export function parseStandardDate(dateValue: any): Date | null {
+  if (!dateValue) return null;
+  
+  // Handle different input types
+  if (dateValue instanceof Date) {
+    return isNaN(dateValue.getTime()) ? null : dateValue;
+  }
+  
+  if (typeof dateValue === 'string') {
+    // Remove any time components and normalize
+    const cleanDate = dateValue.split('T')[0].split(' ')[0];
+    
+    // Handle various string formats
+    if (cleanDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // YYYY-MM-DD (ISO format)
+      return new Date(cleanDate + 'T00:00:00.000Z');
+    } else if (cleanDate.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      // MM/DD/YYYY or M/D/YYYY
+      return new Date(cleanDate);
+    } else if (cleanDate.match(/^\d{1,2}-\d{1,2}-\d{4}$/)) {
+      // MM-DD-YYYY or M-D-YYYY
+      const parts = cleanDate.split('-');
+      return new Date(`${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`);
+    } else if (cleanDate.match(/^\d{2}\/\d{2}\/\d{2}$/)) {
+      // MM/DD/YY - assume 20XX for years 00-30, 19XX for 31-99
+      const parts = cleanDate.split('/');
+      const year = parseInt(parts[2]);
+      const fullYear = year <= 30 ? 2000 + year : 1900 + year;
+      return new Date(`${fullYear}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`);
+    }
+    
+    // Try generic parsing as fallback
+    const parsed = new Date(dateValue);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+  
+  if (typeof dateValue === 'number') {
+    // Excel serial date number
+    const parsed = new Date((dateValue - 25569) * 86400 * 1000);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+  
+  // Try direct conversion
+  const parsed = new Date(dateValue);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+// Format date to standard YYYY-MM-DD string
+export function formatStandardDate(date: Date): string {
+  if (!date || isNaN(date.getTime())) return '';
+  
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+
+// Check if a date string/value is within a date range
+export function isDateValueInRange(dateValue: any, range: DateRange): boolean {
+  const parsedDate = parseStandardDate(dateValue);
+  if (!parsedDate) return false;
+  
+  return isDateInRange(parsedDate, range);
+}
