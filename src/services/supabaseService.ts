@@ -62,20 +62,158 @@ export class SupabaseService {
           baseKPIs = await this.getJobsRevenueKPIData(dateRange, timeoutPromise);
         } else {
           baseKPIs = await this.getSoldLineitemsKPIData(dateRange, timeoutPromise);
-      // Get opportunities and their related jobs revenue using Job column as foreign key
-      const jobsWithRelationships = await this.getOpportunitiesWithJobsRevenue(dateRange);
+        }
+      }
       
       // Always calculate client reviews from Reviews and Opportunities tables
       const clientReviewPercentage = await this.calculateClientReviewsKPI(dateRange, timeoutPromise);
       
       return {
         ...baseKPIs,
-      return this.calculateKPIsFromOpportunitiesJobsRevenue(jobsWithRelationships);
+        clientReviewPercentage
       };
     } catch (error) {
       console.error('Error in getKPIData:', error);
       throw error;
     }
+  }
+
+  // Get opportunities with their related jobs revenue using Job column as foreign key
+  private async getOpportunitiesWithJobsRevenue(dateRange: DateRange): Promise<any[]> {
+    console.log('🔍 Fetching opportunities and their related jobs revenue...');
+
+    // Step 1: Get opportunities in the date range
+    const { data: opportunities, error: oppError } = await supabase
+      .from('Opportunities')
+      .select('"Job", "Date", "Customer", "Revenue", "Status", "Department", "Lead Type", "Primary Key"')
+      .gte('"Date"', dateRange.start.toISOString().split('T')[0])
+      .lte('"Date"', dateRange.end.toISOString().split('T')[0]);
+
+    if (oppError) {
+      console.error('Error fetching opportunities:', oppError);
+      throw oppError;
+    }
+
+    console.log(`✅ Found ${opportunities?.length || 0} opportunities in date range`);
+
+    // Step 2: Get unique job numbers from opportunities (convert to numbers)
+    const jobNumbers = [...new Set(opportunities.map(opp => Number(opp.Job)).filter(job => !isNaN(job)))];
+    
+    console.log(`🔍 Looking up jobs revenue for ${jobNumbers.length} unique jobs...`);
+
+    // Step 3: Get jobs revenue for those specific jobs
+    const { data: jobsRevenue, error: jobsError } = await supabase
+      .from('Jobs_revenue')
+      .select('"Job", "Department", "Revenue", "Customer", "Completed", "Owner", "Primary Key"')
+      .in('"Job"', jobNumbers);
+
+    if (jobsError) {
+      console.error('Error fetching jobs revenue:', jobsError);
+      throw jobsError;
+    }
+
+    console.log(`✅ Found ${jobsRevenue?.length || 0} jobs revenue records for those jobs`);
+
+    // Step 4: Combine opportunities with their jobs revenue
+    const jobsWithRelationships = opportunities.map(opportunity => {
+      const relatedJobRevenue = (jobsRevenue || []).find(job => Number(job.Job) === Number(opportunity.Job));
+      
+      return {
+        opportunity,
+        jobRevenue: relatedJobRevenue,
+        totalJobRevenue: Number(relatedJobRevenue?.Revenue) || 0,
+        hasHighValueRevenue: (Number(relatedJobRevenue?.Revenue) || 0) >= 10000,
+        isCompleted: (relatedJobRevenue?.Completed || '').toLowerCase().includes('yes') ||
+                    (relatedJobRevenue?.Completed || '').toLowerCase().includes('complete'),
+        department: relatedJobRevenue?.Department || opportunity.Department
+      };
+    });
+
+    console.log(`🔗 Successfully linked ${jobsWithRelationships.length} opportunities with their jobs revenue`);
+
+    return jobsWithRelationships;
+  }
+
+  // Calculate KPIs from opportunities-jobs revenue relationships data
+  private calculateKPIsFromOpportunitiesJobsRevenue(jobsWithRelationships: any[]): KPIData {
+    console.log('=== CALCULATING KPIs FROM OPPORTUNITIES-JOBS REVENUE RELATIONSHIPS ===');
+    console.log('Total jobs with relationships:', jobsWithRelationships.length);
+
+    const totalJobs = jobsWithRelationships.length;
+
+    // Install calls: Jobs with revenue >= $10k
+    const installJobs = jobsWithRelationships.filter(job => job.hasHighValueRevenue);
+    const installCallsPercentage = totalJobs > 0 ? (installJobs.length / totalJobs) * 100 : 0;
+
+    // Install revenue per call: Total high-value revenue / Total jobs
+    const totalInstallRevenue = installJobs.reduce((sum, job) => sum + job.totalJobRevenue, 0);
+    const installRevenuePerCall = totalJobs > 0 ? totalInstallRevenue / totalJobs : 0;
+
+    // Service-specific calculations based on department
+    const jettingJobs = jobsWithRelationships.filter(job => 
+      (job.department || '').toLowerCase().includes('jetting') ||
+      (job.department || '').toLowerCase().includes('jet')
+    );
+    const jettingJobsPercentage = totalJobs > 0 ? (jettingJobs.length / totalJobs) * 100 : 0;
+    const jettingRevenue = jettingJobs.reduce((sum, job) => sum + job.totalJobRevenue, 0);
+    const jettingRevenuePerCall = totalJobs > 0 ? jettingRevenue / totalJobs : 0;
+
+    const descalingJobs = jobsWithRelationships.filter(job => 
+      (job.department || '').toLowerCase().includes('descaling') ||
+      (job.department || '').toLowerCase().includes('descale')
+    );
+    const descalingJobsPercentage = totalJobs > 0 ? (descalingJobs.length / totalJobs) * 100 : 0;
+    const descalingRevenue = descalingJobs.reduce((sum, job) => sum + job.totalJobRevenue, 0);
+    const descalingRevenuePerCall = totalJobs > 0 ? descalingRevenue / totalJobs : 0;
+
+    // Won opportunities for conversion calculations
+    const wonOpportunities = jobsWithRelationships.filter(job => 
+      (job.opportunity.Status || '').toLowerCase().includes('won') ||
+      (job.opportunity.Status || '').toLowerCase().includes('closed won') ||
+      (job.opportunity.Status || '').toLowerCase().includes('completed') ||
+      (job.opportunity.Status || '').toLowerCase().includes('sold')
+    );
+
+    // Job efficiency based on completion rate
+    const completedJobs = jobsWithRelationships.filter(job => job.isCompleted);
+    const jobEfficiency = totalJobs > 0 ? (completedJobs.length / totalJobs) * 100 : 0;
+
+    // Zero revenue jobs
+    const zeroRevenueJobs = jobsWithRelationships.filter(job => job.totalJobRevenue === 0);
+    const zeroRevenueCallPercentage = totalJobs > 0 ? (zeroRevenueJobs.length / totalJobs) * 100 : 0;
+
+    console.log('Install jobs:', installJobs.length);
+    console.log('Jetting jobs:', jettingJobs.length);
+    console.log('Descaling jobs:', descalingJobs.length);
+    console.log('Won opportunities:', wonOpportunities.length);
+    console.log('Completed jobs:', completedJobs.length);
+
+    return {
+      installCallsPercentage,
+      installRevenuePerCall,
+      jettingJobsPercentage,
+      jettingRevenuePerCall,
+      descalingJobsPercentage,
+      descalingRevenuePerCall,
+      membershipConversionRate: 0, // Would need membership-specific data
+      totalMembershipsRenewed: 0, // Would need membership-specific data
+      techPayPercentage: 0, // Would need cost data
+      laborRevenuePerHour: 0, // Would need time tracking data
+      jobEfficiency,
+      zeroRevenueCallPercentage,
+      diagnosticFeeOnlyPercentage: 0, // Would need line item detail
+      callbackPercentage: 0, // Not available in this data
+      clientComplaintPercentage: 0, // Not available in this data
+      clientReviewPercentage: 0 // Calculated separately in calculateClientReviewsKPI
+    };
+  }
+
+  // Enhanced KPI calculation using job relationships
+  private async calculateKPIsWithJobRelationships(dateRange: DateRange): Promise<KPIData> {
+    // Get opportunities and their related jobs revenue using Job column as foreign key
+    const jobsWithRelationships = await this.getOpportunitiesWithJobsRevenue(dateRange);
+    
+    return this.calculateKPIsFromOpportunitiesJobsRevenue(jobsWithRelationships);
   }
 
   private async getSoldLineitemsKPIData(dateRange: DateRange, timeoutPromise: Promise<never>): Promise<KPIData> {
@@ -287,9 +425,13 @@ export class SupabaseService {
     }
 
     console.log('✅ Opportunities sample data retrieved:', {
-  // Get opportunities with their related jobs revenue using Job column as foreign key
-  private async getOpportunitiesWithJobsRevenue(dateRange: DateRange): Promise<any[]> {
-    console.log('🔍 Fetching opportunities and their related jobs revenue...');
+      totalRows: sampleData.length,
+      dateRange: {
+        latest: sampleData[0]?.['Date'],
+        earliest: sampleData[sampleData.length - 1]?.['Date']
+      },
+      sampleDates: sampleData.slice(0, 5).map(row => row['Date'])
+    });
 
     // Step 2: Fetch filtered data
     const filteredPromise = supabase
@@ -398,8 +540,7 @@ export class SupabaseService {
     // Debug: Check Department column values
     const departmentValues = data.map(row => row.Department).filter(Boolean);
     console.log('Sample Department values:', [...new Set(departmentValues)].slice(0, 10));
-    // Step 2: Get unique job numbers from opportunities (convert to numbers)
-    const jobNumbers = [...new Set(opportunities.map(opp => Number(opp.Job)).filter(job => !isNaN(job)))];
+    
     const priceValues = data.map(row => row.Price).filter(val => val !== null && val !== undefined);
     console.log('Sample Price values:', priceValues.slice(0, 10));
     console.log('Max price found:', Math.max(...priceValues.map(p => Number(p) || 0)));
@@ -408,62 +549,44 @@ export class SupabaseService {
     const allJobs = [...new Set(data.map(row => row.Job).filter(Boolean))];
     console.log('Total unique jobs found:', allJobs.length);
     
-    // Step 3: Get jobs revenue for those specific jobs
-    const { data: jobsRevenue, error: jobsError } = await supabase
-      .from('Jobs_revenue')
-      .select('"Job", "Department", "Revenue", "Customer", "Completed", "Owner", "Primary Key"')
-      .in('"Job"', jobNumbers);
-        jobsWithInstalls.add(row.Job);
-    if (jobsError) {
-      console.error('Error fetching jobs revenue:', jobsError);
-      throw jobsError;
+    // Find jobs with install line items (high-value items)
+    const installLineItems = data.filter(row => {
+      const price = Number(row.Price) || 0;
+      return price >= 10000; // Consider $10k+ as install items
     });
     
-    console.log(`✅ Found ${jobsRevenue?.length || 0} jobs revenue records for those jobs`);
+    const jobsWithInstalls = new Set();
+    installLineItems.forEach(row => {
+      if (row.Job) {
+        jobsWithInstalls.add(row.Job);
+      }
+    });
+    
     console.log('Jobs with installs found:', jobsWithInstalls.size);
-    // Step 4: Combine opportunities with their jobs revenue
+    
     // Debug: Show some examples of install jobs
-      const relatedJobRevenue = (jobsRevenue || []).find(job => Number(job.Job) === Number(opportunity.Job));
-      console.log('Sample install line items:');
-      installLineItems.slice(0, 3).forEach((item, index) => {
-        console.log(`${index + 1}. Job: ${item.Job}, Price: $${item.Price}, Department: ${item.Department}, Line Item: ${item['Line Item']}`);
-        jobRevenue: relatedJobRevenue,
-        totalJobRevenue: Number(relatedJobRevenue?.Revenue) || 0,
-        hasHighValueRevenue: (Number(relatedJobRevenue?.Revenue) || 0) >= 10000,
-        isCompleted: (relatedJobRevenue?.Completed || '').toLowerCase().includes('yes') ||
-                    (relatedJobRevenue?.Completed || '').toLowerCase().includes('complete'),
-        department: relatedJobRevenue?.Department || opportunity.Department
+    console.log('Sample install line items:');
+    installLineItems.slice(0, 3).forEach((item, index) => {
+      console.log(`${index + 1}. Job: ${item.Job}, Price: $${item.Price}, Department: ${item.Department}, Line Item: ${item['Line Item']}`);
+    });
+    
     const uniqueDepartments = [...new Set(data.map(row => row.Department).filter(Boolean))];
     console.log('All unique departments in data:', uniqueDepartments);
     
-    console.log(`🔗 Successfully linked ${jobsWithRelationships.length} opportunities with their jobs revenue`);
     const installCallsPercentage = allJobs.length > 0 ? (jobsWithInstalls.size / allJobs.length) * 100 : 0;
     
     // Calculate install revenue per call: Total install revenue / Total jobs
     const totalInstallRevenue = installLineItems.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
-  // Calculate KPIs from opportunities-jobs revenue relationships data
-  private calculateKPIsFromOpportunitiesJobsRevenue(jobsWithRelationships: any[]): KPIData {
-    console.log('=== CALCULATING KPIs FROM OPPORTUNITIES-JOBS REVENUE RELATIONSHIPS ===');
-    console.log('Total jobs:', allJobs.length);
-    console.log('Jobs with installs:', jobsWithInstalls.size);
-    console.log('Install call rate:', installCallsPercentage.toFixed(2) + '%');
-    console.log('Total install revenue:', totalInstallRevenue);
-    // Install calls: Jobs with revenue >= $10k
-    const installJobs = jobsWithRelationships.filter(job => job.hasHighValueRevenue);
+    const installRevenuePerCall = allJobs.length > 0 ? totalInstallRevenue / allJobs.length : 0;
     
-    // For other calculations, we'll use the same total jobs count
-    // Install revenue per call: Total high-value revenue / Total jobs
-    const totalInstallRevenue = installJobs.reduce((sum, job) => sum + job.totalJobRevenue, 0);
     // Jetting jobs (line items containing "jetting" or similar)
     const jettingItems = data.filter(row => 
-    // Service-specific calculations based on department
-    const jettingJobs = jobsWithRelationships.filter(job => 
-      (job.department || '').toLowerCase().includes('jetting') ||
-      (job.department || '').toLowerCase().includes('jet')
+      (row['Line Item'] || '').toLowerCase().includes('jetting') ||
+      (row['Line Item'] || '').toLowerCase().includes('jet') ||
+      (row.Department || '').toLowerCase().includes('jetting')
     );
-    const jettingJobsPercentage = totalJobs > 0 ? (jettingJobs.length / totalJobs) * 100 : 0;
-    const jettingRevenue = jettingJobs.reduce((sum, job) => sum + job.totalJobRevenue, 0);
-    const jettingRevenuePerCall = totalJobs > 0 ? jettingRevenue / totalJobs : 0;
+    const uniqueJettingJobs = new Set(jettingItems.map(row => row.Job)).size;
+    const jettingRevenue = jettingItems.reduce((sum, row) => sum + (Number(row.Price) || 0), 0);
     
     const descalingItems = data.filter(row => 
       (row['Line Item'] || '').toLowerCase().includes('descaling') ||
@@ -492,24 +615,30 @@ export class SupabaseService {
     });
     const uniqueDiagnosticOnlyJobs = new Set(diagnosticOnlyJobs.map(row => row.Job)).size;
     
+    console.log('Total jobs:', allJobs.length);
+    console.log('Jobs with installs:', jobsWithInstalls.size);
+    console.log('Install call rate:', installCallsPercentage.toFixed(2) + '%');
+    console.log('Total install revenue:', totalInstallRevenue);
+    console.log('Install revenue per call:', installRevenuePerCall);
+    
     return {
       installCallsPercentage: installCallsPercentage,
       installRevenuePerCall: installRevenuePerCall,
-      jettingJobsPercentage: totalJobs > 0 ? (uniqueJettingJobs / totalJobs) * 100 : 0,
-      jettingRevenuePerCall: totalJobs > 0 ? jettingRevenue / totalJobs : 0,
-      descalingJobsPercentage: totalJobs > 0 ? (uniqueDescalingJobs / totalJobs) * 100 : 0,
-      descalingRevenuePerCall: totalJobs > 0 ? descalingRevenue / totalJobs : 0,
+      jettingJobsPercentage: allJobs.length > 0 ? (uniqueJettingJobs / allJobs.length) * 100 : 0,
+      jettingRevenuePerCall: allJobs.length > 0 ? jettingRevenue / allJobs.length : 0,
+      descalingJobsPercentage: allJobs.length > 0 ? (uniqueDescalingJobs / allJobs.length) * 100 : 0,
+      descalingRevenuePerCall: allJobs.length > 0 ? descalingRevenue / allJobs.length : 0,
       membershipConversionRate: totalCustomers > 0 ? (membershipItems.length / totalCustomers) * 100 : 0,
       totalMembershipsRenewed: membershipItems.length,
       techPayPercentage: 0, // Would need additional data to calculate
       laborRevenuePerHour: 0, // Would need time tracking data
       jobEfficiency: 0, // Would need time allocation data
-      zeroRevenueCallPercentage: totalJobs > 0 ? (uniqueZeroRevenueJobs / totalJobs) * 100 : 0,
-      diagnosticFeeOnlyPercentage: totalJobs > 0 ? (uniqueDiagnosticOnlyJobs / totalJobs) * 100 : 0,
+      zeroRevenueCallPercentage: allJobs.length > 0 ? (uniqueZeroRevenueJobs / allJobs.length) * 100 : 0,
+      diagnosticFeeOnlyPercentage: allJobs.length > 0 ? (uniqueDiagnosticOnlyJobs / allJobs.length) * 100 : 0,
       callbackPercentage: 0, // Would need callback tracking data
       clientComplaintPercentage: 0, // Would need complaint tracking data
       clientReviewPercentage: 0 // Calculated separately in calculateClientReviewsKPI
-    }
+    };
   }
 
   // Calculate KPIs from Opportunities data
@@ -537,7 +666,7 @@ export class SupabaseService {
     const closedWon = data.filter(opp => 
       (opp.Status || '').toLowerCase().includes('won') ||
       (opp.Status || '').toLowerCase().includes('closed won') ||
-      (opp.Status || '').toLowerCase().includes('completed')
+      (opp.Status || '').toLowerCase().includes('completed') ||
       (opp.Status || '').toLowerCase().includes('sold')
     ).length;
     
@@ -651,37 +780,22 @@ export class SupabaseService {
     const descalingJobs = data.filter(job => 
       (job.Department || '').toLowerCase().includes('descaling') ||
       (job.Department || '').toLowerCase().includes('descale')
-    const descalingJobs = jobsWithRelationships.filter(job => 
-      (job.department || '').toLowerCase().includes('descaling') ||
-      (job.department || '').toLowerCase().includes('descale')
-    );
+    ).length;
     
-    const descalingRevenue = descalingJobs.reduce((sum, job) => sum + job.totalJobRevenue, 0);
     const zeroRevenueJobs = data.filter(job => (Number(job.Revenue) || 0) === 0).length;
     
-    // Won opportunities for conversion calculations
+    // Jobs with outstanding balance
     const jobsWithBalance = data.filter(job => {
       const balance = Number(job.Balance) || 0;
       return balance > 0;
-      (job.opportunity.Status || '').toLowerCase().includes('completed') ||
-      (job.opportunity.Status || '').toLowerCase().includes('sold')
+    }).length;
     
     console.log('=== JOBS_REVENUE CALCULATION RESULTS ===');
-    // Job efficiency based on completion rate
-    const completedJobs = jobsWithRelationships.filter(job => job.isCompleted);
-    const jobEfficiency = totalJobs > 0 ? (completedJobs.length / totalJobs) * 100 : 0;
-    
-    // Zero revenue jobs
-    const zeroRevenueJobs = jobsWithRelationships.filter(job => job.totalJobRevenue === 0);
-    const zeroRevenueCallPercentage = totalJobs > 0 ? (zeroRevenueJobs.length / totalJobs) * 100 : 0;
-    
     console.log('Total jobs:', totalJobs);
     console.log('Completed jobs:', completedJobs);
     console.log('High-value jobs (≥$10k):', highValueJobs.length);
     console.log('Average revenue per job:', avgRevenuePerJob);
     console.log('Jobs with outstanding balance:', jobsWithBalance);
-    console.log('Won opportunities:', wonOpportunities.length);
-    console.log('Completed jobs:', completedJobs.length);
     console.log('=== END JOBS_REVENUE DEBUGGING ===');
     
     return {
@@ -695,8 +809,8 @@ export class SupabaseService {
       totalMembershipsRenewed: 0, // Would need membership-specific data
       techPayPercentage: 0, // Would need cost data
       laborRevenuePerHour: 0, // Would need time tracking data
-      jobEfficiency,
-      zeroRevenueCallPercentage,
+      jobEfficiency: totalJobs > 0 ? (completedJobs / totalJobs) * 100 : 0,
+      zeroRevenueCallPercentage: totalJobs > 0 ? (zeroRevenueJobs / totalJobs) * 100 : 0,
       diagnosticFeeOnlyPercentage: 0, // Would need line item detail
       callbackPercentage: 0, // Not available in this data
       clientComplaintPercentage: 0, // Not available in this data
@@ -724,23 +838,23 @@ export class SupabaseService {
         .select(selectColumns)
         .gte(dateColumn, dateRange.start.toISOString().split('T')[0])
         .lte(dateColumn, dateRange.end.toISOString().split('T')[0])
-        .order(dateColumn, { ascending: true })
+        .order(dateColumn, { ascending: true });
 
       if (error) {
-        console.error('Error fetching time series data:', error)
-        throw error
+        console.error('Error fetching time series data:', error);
+        throw error;
       }
 
       if (this.tableName === 'Opportunities') {
-        return this.calculateTimeSeriesFromOpportunities(data || [])
+        return this.calculateTimeSeriesFromOpportunities(data || []);
       } else if (this.tableName === 'Jobs_revenue') {
-        return this.calculateTimeSeriesFromJobsRevenue(data || [])
+        return this.calculateTimeSeriesFromJobsRevenue(data || []);
       } else {
-        return this.calculateTimeSeriesFromSoldLineitems(data || [])
+        return this.calculateTimeSeriesFromSoldLineitems(data || []);
       }
     } catch (error) {
-      console.error('Error in getTimeSeriesData:', error)
-      return []
+      console.error('Error in getTimeSeriesData:', error);
+      return [];
     }
   }
 
@@ -846,17 +960,17 @@ export class SupabaseService {
         .from(this.getDbTableName(this.tableName))
         .select('*')
         .order(orderColumn, { ascending: false })
-        .limit(limit)
+        .limit(limit);
 
       if (error) {
-        console.error('Error fetching raw data:', error)
-        throw error
+        console.error('Error fetching raw data:', error);
+        throw error;
       }
 
-      return data || []
+      return data || [];
     } catch (error) {
-      console.error('Error in getRawData:', error)
-      throw error
+      console.error('Error in getRawData:', error);
+      throw error;
     }
   }
 
@@ -1049,17 +1163,17 @@ export class SupabaseService {
     try {
       const { count, error } = await supabase
         .from(this.getDbTableName(this.tableName))
-        .select('*', { count: 'exact', head: true })
+        .select('*', { count: 'exact', head: true });
 
       if (error) {
-        console.error('Error getting total count:', error)
-        throw error
+        console.error('Error getting total count:', error);
+        throw error;
       }
 
-      return { count: count || 0 }
+      return { count: count || 0 };
     } catch (error) {
-      console.error('Error in getTotalCount:', error)
-      throw error
+      console.error('Error in getTotalCount:', error);
+      throw error;
     }
   }
 
@@ -1081,6 +1195,6 @@ export class SupabaseService {
       callbackPercentage: 0,
       clientComplaintPercentage: 0,
       clientReviewPercentage: 0
-    }
+    };
   }
 }
