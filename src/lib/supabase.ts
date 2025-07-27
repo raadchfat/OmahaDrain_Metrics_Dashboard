@@ -160,7 +160,7 @@ export type Database = {
         "Billing City"?: string | null
         "Billing State"?: string | null
         "Billing Zip Code"?: string | null
-        "Job": string
+        "Job": number
         "Tags"?: string | null
         "Location Name"?: string | null
         "Service Street"?: string | null
@@ -181,7 +181,7 @@ export type Database = {
         "Billing City"?: string | null
         "Billing State"?: string | null
         "Billing Zip Code"?: string | null
-        "Job"?: string
+        "Job"?: number
         "Tags"?: string | null
         "Location Name"?: string | null
         "Service Street"?: string | null
@@ -228,7 +228,7 @@ export type Database = {
       Row: {
         "Sold_On": string | null
         "Invoice": string | null
-        "Job": string | null
+        "Job": number | null
         "Customer": string | null
         "Program": string | null
         "Systems": string | null
@@ -240,7 +240,7 @@ export type Database = {
       }
       Insert: {
         "Sold_On"?: string | null
-        "Invoice"?: string | null
+        "Job"?: number | null
         "Job"?: string | null
         "Customer"?: string | null
         "Program"?: string | null
@@ -267,3 +267,4 @@ export type Database = {
     }
   }
 }
+        "Job": number
