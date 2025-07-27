@@ -266,5 +266,3 @@ export type Database = {
       }
     }
   }
-}
-        "Job": number
