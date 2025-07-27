@@ -926,6 +926,7 @@ export class SupabaseService {
       clientReviewPercentage: 0, // Calculated separately in calculateClientReviewsKPI
       debugData: {
         dataSource: `Supabase Database (${this.tableName})`,
+        tableName: this.tableName,
         totalJobs: totalJobs,
         completedJobs: completedJobs,
         highValueJobs: highValueJobs.length,
@@ -936,11 +937,6 @@ export class SupabaseService {
 
   async getTimeSeriesData(dateRange: DateRange): Promise<TimeSeriesData[]> {
     try {
-      console.log('📅 Date range:', {
-        start: formatStandardDate(dateRange.start),
-        end: formatStandardDate(dateRange.end)
-      });
-      
       const dateColumn = this.tableName === 'Opportunities' ? '"Date"' : 'Invoice Date';
       const selectColumns = this.tableName === 'Opportunities' 
         ? '"Date", "Revenue", "Status", "Department"'
@@ -950,7 +946,8 @@ export class SupabaseService {
         .from(this.getDbTableName(this.tableName))
         .select(selectColumns)
         .gte(dateColumn, dateRange.start.toISOString().split('T')[0])
-        .lte(dateColumn, dateRange.end.toISOString().split('T')[0]);
+        .lte(dateColumn, dateRange.end.toISOString().split('T')[0])
+        .order(dateColumn, { ascending: true });
 
       if (error) {
         console.error('Error fetching time series data:', error);
@@ -970,11 +967,14 @@ export class SupabaseService {
         } else if (this.tableName === 'Jobs_revenue') {
           // Jobs_revenue doesn't have a date column, skip filtering
           return true;
+        } else if (this.tableName === 'Reviews') {
+          dateValue = parseStandardDate(row['Review Date']);
+        } else if (this.tableName === 'memberships') {
+          dateValue = parseStandardDate(row['sold_on_clean'] || row['Sold_On']);
         } else {
           dateValue = parseStandardDate(row['Invoice Date']);
         }
         
-        if (!dateValue) return false;
         return dateValue ? isDateInRange(dateValue, dateRange) : false;
       });
 
@@ -1256,6 +1256,11 @@ export class SupabaseService {
   // Legacy method for backward compatibility
   async getTotalCount(): Promise<number> {
     try {
+      console.log('📅 Date range:', {
+        start: formatStandardDate(dateRange.start),
+        end: formatStandardDate(dateRange.end)
+      });
+      
       // Get all opportunities and filter by date in JavaScript for better debugging
       console.log('🔍 Fetching all opportunities for date filtering...');
       const { data: allOpportunities, error: allError } = await supabase
@@ -1268,6 +1273,64 @@ export class SupabaseService {
       }
 
       console.log('📊 Total opportunities fetched:', allOpportunities?.length || 0);
+      
+      // Filter opportunities by date range using standardized date parsing
+      const filteredOpportunities = (allOpportunities || []).filter(opp => {
+        const oppDate = parseStandardDate(opp.Date);
+        if (!oppDate) {
+          console.log('⚠️ Invalid date for opportunity:', opp.Date);
+          return false;
+        }
+        
+        const inRange = isDateInRange(oppDate, dateRange);
+        if (inRange) {
+          console.log('✅ Opportunity in range:', {
+            date: opp.Date,
+            parsed: formatStandardDate(oppDate),
+            job: opp.Job
+          });
+        }
+        return inRange;
+      });
+      
+      console.log('✅ Found', filteredOpportunities.length, 'opportunities in date range');
+      
+      if (filteredOpportunities.length === 0) {
+        // Show recent opportunities for debugging
+        const recentOpps = (allOpportunities || [])
+          .filter(opp => parseStandardDate(opp.Date))
+          .sort((a, b) => {
+            const dateA = parseStandardDate(a.Date);
+            const dateB = parseStandardDate(b.Date);
+            return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+          })
+          .slice(0, 5);
+        
+        console.log('📊 Most recent opportunities (for debugging):', recentOpps.map(opp => ({
+          date: opp.Date,
+          parsed: formatStandardDate(parseStandardDate(opp.Date) || new Date()),
+          job: opp.Job,
+          customer: opp.Customer
+        })));
+      }
+      
+      const jobNumbers = filteredOpportunities
+        .map(opp => Number(opp.Job))
+        .filter(job => !isNaN(job));
+      
+      const linkedData = filteredOpportunities.map(opp => {
+        return {
+          opportunity: opp,
+          jobRevenue: null,
+          totalJobRevenue: Number(opp.Revenue) || 0,
+          hasHighValueRevenue: (Number(opp.Revenue) || 0) >= 10000,
+          isCompleted: (opp.Status || '').toLowerCase().includes('won') ||
+                      (opp.Status || '').toLowerCase().includes('closed won') ||
+                      (opp.Status || '').toLowerCase().includes('completed') ||
+                      (opp.Status || '').toLowerCase().includes('sold'),
+          department: opp.Department
+        };
+      });
       
       let primaryKeyColumn: string;
       if (this.tableName === 'Opportunities' || this.tableName === 'Jobs_revenue') {
