@@ -32,14 +32,6 @@ export class SupabaseService {
     try {
       console.log('=== SUPABASE DATE FILTERING DEBUG ===');
       console.log('Requested date range:', {
-    
-    // Add debugging for the primary table as well
-    console.log('🔍 Checking primary table data...');
-    const { count: primaryTableCount } = await this.supabase
-      .from(this.tableName)
-      .select('*', { count: 'exact', head: true });
-    
-    console.log(`📊 Total records in ${this.tableName}:`, primaryTableCount);
         start: dateRange.start.toISOString(),
         end: dateRange.end.toISOString(),
         startDate: dateRange.start.toISOString().split('T')[0],
@@ -47,6 +39,14 @@ export class SupabaseService {
       });
       console.log('Using Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
       console.log('Table name:', this.tableName);
+      
+      // Add debugging for the primary table as well
+      console.log('🔍 Checking primary table data...');
+      const { count: primaryTableCount } = await supabase
+        .from(this.tableName)
+        .select('*', { count: 'exact', head: true });
+      
+      console.log(`📊 Total records in ${this.tableName}:`, primaryTableCount);
       
       // Add timeout to prevent hanging requests
       const timeoutPromise = new Promise((_, reject) => {
@@ -60,13 +60,13 @@ export class SupabaseService {
         // Try enhanced calculation using job relationships only if we have both tables
         console.log('🔍 Attempting enhanced KPI calculation with job relationships...');
         baseKPIs = await this.calculateKPIsWithJobRelationships(dateRange);
-          dateValue = parseStandardDate(row['Invoice Date']);
+        console.log('✅ Successfully used enhanced KPI calculation with job relationships');
       } catch (relationshipError) {
-          dateValue = parseStandardDate(row['Date']);
+        console.warn('❌ Job relationship calculation failed, falling back to single table calculation:', relationshipError);
         
-          dateValue = parseStandardDate(row['Review Date']);
+        // Fallback to single table calculations
         if (this.tableName === 'Opportunities') {
-          dateValue = parseStandardDate(row['sold_on_clean'] || row['Sold_On']);
+          baseKPIs = await this.getOpportunitiesKPIData(dateRange, timeoutPromise);
         } else if (this.tableName === 'Jobs_revenue') {
           baseKPIs = await this.getJobsRevenueKPIData(dateRange, timeoutPromise);
         } else {
@@ -96,10 +96,11 @@ export class SupabaseService {
     console.log('📅 Querying Opportunities table with date range:', {
       start: dateRange.start.toISOString().split('T')[0],
       end: dateRange.end.toISOString().split('T')[0]
+    });
     
     // First, let's see what's actually in the Opportunities table
     console.log('🔍 Checking Opportunities table structure...');
-    const { data: sampleOpportunities, error: sampleError } = await this.supabase
+    const { data: sampleOpportunities, error: sampleError } = await supabase
       .from('Opportunities')
       .select('*')
       .limit(5);
@@ -118,12 +119,11 @@ export class SupabaseService {
     }
     
     // Get total count of opportunities
-    const { count: totalOpportunities } = await this.supabase
+    const { count: totalOpportunities } = await supabase
       .from('Opportunities')
       .select('*', { count: 'exact', head: true });
     
     console.log('📊 Total opportunities in table:', totalOpportunities);
-    });
     
     console.log('🔍 Querying opportunities with date filter...');
     console.log('Filter: Date >= ', dateRange.start.toISOString().split('T')[0]);
@@ -145,7 +145,7 @@ export class SupabaseService {
     // If no opportunities found with date filter, try without date filter to see if there's any data
     if (!opportunities || opportunities.length === 0) {
       console.log('🔍 No opportunities found with date filter, checking recent opportunities...');
-      const { data: recentOpportunities } = await this.supabase
+      const { data: recentOpportunities } = await supabase
         .from('Opportunities')
         .select('Date, Job, Customer, Status')
         .order('Date', { ascending: false })
@@ -928,16 +928,19 @@ export class SupabaseService {
       clientReviewPercentage: 0, // Calculated separately in calculateClientReviewsKPI
       debugData: {
         dataSource: `Supabase Database (${this.tableName})`,
-          dateValue = parseStandardDate(row['Date']);
+        tableName: this.tableName,
         totalJobs: totalJobs,
         completedJobs: completedJobs,
         highValueJobs: highValueJobs.length,
         calculatedAt: new Date().toISOString()
       }
     };
-        if (!dateValue) return;
+  }
+
+  async getTimeSeriesData(dateRange: DateRange): Promise<TimeSeriesData[]> {
+    try {
       const dateColumn = this.tableName === 'Opportunities' ? '"Date"' : 'Invoice Date';
-        const dateKey = formatStandardDate(dateValue);
+      const selectColumns = this.tableName === 'Opportunities' 
         ? '"Date", "Revenue", "Status", "Department"'
         : '*';
       
@@ -946,14 +949,20 @@ export class SupabaseService {
         .select(selectColumns)
         .gte(dateColumn, dateRange.start.toISOString().split('T')[0])
         .lte(dateColumn, dateRange.end.toISOString().split('T')[0])
-          dateValue = parseStandardDate(row['Invoice Date']);
+        .order(dateColumn, { ascending: true });
 
       if (error) {
         console.error('Error fetching time series data:', error);
         throw error;
       }
 
-        return dateValue ? isDateInRange(dateValue, dateRange) : false;
+      if (this.tableName === 'Opportunities') {
+        return this.calculateTimeSeriesFromOpportunities(data || []);
+      } else if (this.tableName === 'Jobs_revenue') {
+        return this.calculateTimeSeriesFromJobsRevenue(data || []);
+      } else {
+        console.log('⚠️ No relationship data found, falling back to single table calculation from', this.tableName);
+        return this.calculateTimeSeriesFromSoldLineitems(data || []);
       }
     } catch (error) {
       console.error('Error in getTimeSeriesData:', error);
@@ -1055,10 +1064,6 @@ export class SupabaseService {
         orderColumn = '"Review Date"';
       } else if (this.tableName === 'memberships') {
         orderColumn = 'sold_on_clean';
-    console.log('📅 Date range:', {
-      start: formatStandardDate(dateRange.start),
-      end: formatStandardDate(dateRange.end)
-    });
       } else {
         orderColumn = '"Invoice Date"';
       }
@@ -1155,8 +1160,6 @@ export class SupabaseService {
       });
       
       if (error) {
-        parsed: parseStandardDate(opp.Date),
-        formatted: opp.Date ? formatStandardDate(parseStandardDate(opp.Date) || new Date()) : null
         if (error.code === 'PGRST116') {
           return {
             success: false,
@@ -1229,22 +1232,43 @@ export class SupabaseService {
   }
 
   // Legacy method for backward compatibility
+  async getTotalCount(): Promise<number> {
+    try {
       // Get all opportunities and filter by date in JavaScript for better debugging
       console.log('🔍 Fetching all opportunities for date filtering...');
       const { data: allOpportunities, error: allError } = await supabase
         .from('Opportunities')
         .select('*');
       
-      let primaryKeyColumn: string;
-      if (this.tableName === 'Opportunities' || this.tableName === 'Jobs_revenue') {
-        primaryKeyColumn = '"Job"';
-      } else if (this.tableName === 'Reviews') {
-        primaryKeyColumn = '"ID"';
-      } else if (this.tableName === 'memberships') {
-        primaryKeyColumn = '"Primary Key"';
-      if (filteredOpportunities.length === 0) {
-        primaryKeyColumn = '"Primary Key"';
+      if (allError) {
+        console.error('❌ Error fetching all opportunities:', allError);
+        throw allError;
+      }
+
+      console.log('📊 Total opportunities fetched:', allOpportunities?.length || 0);
+      
+      // Filter opportunities by date range using standardized date parsing
+      const filteredOpportunities = (allOpportunities || []).filter(opp => {
+        const oppDate = parseStandardDate(opp.Date);
+        if (!oppDate) {
+          console.log('⚠️ Invalid date for opportunity:', opp.Date);
+          return false;
+        }
         
+        const inRange = isDateInRange(oppDate, { start: new Date(), end: new Date() });
+        if (inRange) {
+          console.log('✅ Opportunity in range:', {
+            date: opp.Date,
+            parsed: formatStandardDate(oppDate),
+            job: opp.Job
+          });
+        }
+        return inRange;
+      });
+      
+      console.log('✅ Found', filteredOpportunities.length, 'opportunities in date range');
+      
+      if (filteredOpportunities.length === 0) {
         // Show recent opportunities for debugging
         const recentOpps = (allOpportunities || [])
           .filter(opp => parseStandardDate(opp.Date))
@@ -1261,57 +1285,51 @@ export class SupabaseService {
           job: opp.Job,
           customer: opp.Customer
         })));
-        
+      }
+      
+      const jobNumbers = filteredOpportunities
+        .map(opp => Number(opp.Job))
+        .filter(job => !isNaN(job));
+      
+      const linkedData = filteredOpportunities.map(opp => {
+        return {
+          opportunity: opp,
+          jobRevenue: null,
+          totalJobRevenue: 0,
+          hasHighValueRevenue: false,
+          isCompleted: false,
+          department: opp.Department
+        };
+      });
+      
+      let primaryKeyColumn: string;
+      if (this.tableName === 'Opportunities' || this.tableName === 'Jobs_revenue') {
+        primaryKeyColumn = '"Job"';
+      } else if (this.tableName === 'Reviews') {
+        primaryKeyColumn = '"ID"';
+      } else if (this.tableName === 'memberships') {
+        primaryKeyColumn = '"Primary Key"';
+      } else {
+        primaryKeyColumn = '"Primary Key"';
       }
       
       const selectColumn = primaryKeyColumn;
       
-      const jobNumbers = filteredOpportunities
+      const testPromise = supabase
         .from(this.getDbTableName(this.tableName))
         .select(selectColumn)
         .limit(1);
 
-      const { data, error } = await Promise.race([testPromise, timeoutPromise]) as any;
+      const { data, error } = await Promise.race([testPromise, new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection test timeout')), 5000);
+      })]) as any;
 
       if (error) {
         console.error('Connection test error:', error);
-        return false;
+        return 0;
       }
       
-      return true;
-    } catch (error) {
-      console.error('Supabase connection test failed:', error);
-      return false;
-    }
-  }
-
-      if (allError) {
-        console.error('❌ Error fetching all opportunities:', allError);
-        throw allError;
-      }
-
-      console.log('📊 Total opportunities fetched:', allOpportunities?.length || 0);
-      
-      // Filter opportunities by date range using standardized date parsing
-      const filteredOpportunities = (allOpportunities || []).filter(opp => {
-        const oppDate = parseStandardDate(opp.Date);
-      const linkedData = filteredOpportunities.map(opp => {
-          console.log('⚠️ Invalid date for opportunity:', opp.Date);
-          return false;
-        }
-        
-        const inRange = isDateInRange(oppDate, dateRange);
-        if (inRange) {
-          console.log('✅ Opportunity in range:', {
-            date: opp.Date,
-            parsed: formatStandardDate(oppDate),
-            job: opp.Job
-          });
-        }
-        return inRange;
-      });
-      
-      console.log('✅ Found', filteredOpportunities.length, 'opportunities in date range');
+      return linkedData.length;
     } catch (error) {
       console.error('Error in getTotalCount:', error);
       throw error;
